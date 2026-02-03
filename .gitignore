@@ -1,0 +1,28 @@
+# --- General ---
+node_modules/
+.DS_Store
+*.log
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# --- Next.js (site folder) ---
+site/.next/
+site/out/
+site/build/
+
+# --- Chrome Extension (extension folder) ---
+extension/dist/
+extension/build/
+# If you use Vite for the extension:
+extension/.vite/
+
+# --- Testing & Coverage ---
+coverage/
+.nyc_output/
+
+# --- IDEs ---
+.vscode/
+.idea/
