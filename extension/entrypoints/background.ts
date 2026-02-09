@@ -1,52 +1,43 @@
+import {
+  isSubmissionUrl,
+  extractSubmissionId,
+  isValidSubmissionId,
+  createSubmissionTracker,
+} from "@/utils/background.logic";
+
 export default defineBackground(() => {
-  const processedSubmissions = new Set<string>();
-  const processing = new Set<string>();
-  const MAX_STORED: number = 100;
+  const tracker = createSubmissionTracker(100);
 
   browser.webRequest.onCompleted.addListener(
     async (details) => {
       // if not the url just return.
-      if (!details.url.includes("/check/")) return;
+      if (!isSubmissionUrl(details.url)) return;
+
       try {
-        const match = details.url.match(
-          /\/submissions\/detail\/([^/]+)\/check\//,
-        );
-        if (!match) return;
-        const submissionId = match[1];
+        const submissionId = extractSubmissionId(details.url);
+        if (!submissionId) return;
 
         // ignore run code or test case.
-        if (!/^\d+$/.test(submissionId)) {
+        if (!isValidSubmissionId(submissionId)) {
           console.log("🚫 Ignoring 'Run Code' or Test Case:", submissionId);
           return;
         }
+
         // prevent duplicate processing, if already processed or being processed, skip.
-        if (
-          processedSubmissions.has(submissionId) ||
-          processing.has(submissionId)
-        ) {
+        if (tracker.isDuplicate(submissionId)) {
           return;
         }
 
-        processing.add(submissionId);
+        tracker.startProcessing(submissionId);
 
         // 
         const response = await fetch(details.url);
         const data = await response.json();
         if (data.state !== "SUCCESS") {
-          processing.delete(submissionId);
+          tracker.cancelProcessing(submissionId);
           return;
         }
-        processing.delete(submissionId);
-        processedSubmissions.add(submissionId);
-
-        if (processedSubmissions.size > MAX_STORED) {
-          const firstItem: string | undefined = processedSubmissions
-            .values()
-            .next().value;
-          if (firstItem !== undefined) {
-            processedSubmissions.delete(firstItem);
-          }
-        }
+        tracker.completeProcessing(submissionId);
         console.log(
           "🎯 VALID SUBMISSION DETECTED!, ID: " +
             submissionId +
