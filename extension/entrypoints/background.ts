@@ -30,7 +30,7 @@ export default defineBackground(() => {
 
         tracker.startProcessing(submissionId);
 
-        // 
+        //
         const response = await fetch(details.url);
         const data = await response.json();
         if (data.state !== "SUCCESS") {
@@ -49,10 +49,11 @@ export default defineBackground(() => {
 
         // NOW: Trigger your save logic
         if (data.status_msg === "Accepted") {
-          // handleAcceptedSubmission(data, submissionId);
-        } else {
-          // handleFailedSubmission(data, submissionId);
-        }
+          await handleAcceptedSubmission(data, submissionId, details.tabId);
+        } 
+        // else {
+        //   await handleFailedSubmission(data, submissionId);
+        // }
       } catch (err) {
         console.error("Error in network listener:", err);
       }

@@ -18,6 +18,7 @@ extension/dist/
 extension/build/
 # If you use Vite for the extension:
 extension/.vite/
+extension/.cursor/plans/
 
 # --- Testing & Coverage ---
 coverage/
@@ -26,3 +27,4 @@ coverage/
 # --- IDEs ---
 .vscode/
 .idea/
+.cursor/
