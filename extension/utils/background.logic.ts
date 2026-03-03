@@ -33,7 +33,9 @@ export function createSubmissionTracker(maxStored: number = 100) {
      * Checks if a submission ID has already been processed or is being processed.
      */
     isDuplicate(submissionId: string): boolean {
-      return processedSubmissions.has(submissionId) || processing.has(submissionId);
+      return (
+        processedSubmissions.has(submissionId) || processing.has(submissionId)
+      );
     },
 
     /**

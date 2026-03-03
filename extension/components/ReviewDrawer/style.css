@@ -1,0 +1,7 @@
+/* LeetLedger content script styles */
+:root {
+  /* Ensures content.css is emitted for createShadowRootUi */
+  --review-drawer-width: 400px;
+  --review-drawer-height: 100vh;
+  
+}

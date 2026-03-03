@@ -50,7 +50,7 @@ export default defineBackground(() => {
         // NOW: Trigger your save logic
         if (data.status_msg === "Accepted") {
           await handleAcceptedSubmission(data, submissionId, details.tabId);
-        } 
+        }
         // else {
         //   await handleFailedSubmission(data, submissionId);
         // }
