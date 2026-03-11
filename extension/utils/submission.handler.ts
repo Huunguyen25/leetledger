@@ -3,7 +3,11 @@ export async function handleAcceptedSubmission(
   submissionId: string,
   tabId: number,
 ) {
-  if (!tabId || tabId === -1) return;
+  console.log("handleAcceptedSubmission", data, submissionId, tabId);
+  if (!tabId || tabId === -1) {
+    console.error("Failed to send message to tab", tabId);
+    return;
+  }
   try {
     await browser.tabs.sendMessage(tabId, {
       type: "SHOW_REVIEW_DRAWER",

@@ -9,5 +9,11 @@ export default defineConfig({
 
     // 2. Add host permissions so you can fetch the data inside the listener
     host_permissions: ["https://leetcode.com/*", "https://leetcode-cn.com/*"],
+    web_accessible_resources: [
+      {
+        resources: ["/inject.js"],
+        matches: ["*://*.leetcode.com/*"],
+      },
+    ],
   },
 });
