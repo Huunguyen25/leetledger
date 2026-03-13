@@ -1,6 +1,7 @@
 import "@/components/ReviewDrawer/style.css";
 import ReactDOM from "react-dom/client";
 import ReviewForm from "@/components/ReviewDrawer/ReviewForm";
+import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 
 interface SubmissionStoragePayload {
   data: {
@@ -45,38 +46,43 @@ export default defineContentScript({
       }
     });
 
-    browser.storage.local.onChanged.addListener((changes) => {
+    browser.storage.local.onChanged.addListener(async(changes) => {
       for (const [key, change ] of Object.entries(changes)) {
+        // payload saved 
         const payload = change.newValue as SubmissionStoragePayload | undefined;
-        if (key.startsWith(`ll_result:${clientId}:`) && payload) {
-          // Delete instantly to prevent bloat
-          browser.storage.local.remove(key).catch(console.error);
-          console.log("📦 State update received, rendering UI:", payload.data);
-          // Pass the fresh data into your React component
-          if (currentUiRoot) {
-            currentUiRoot.render(<ReviewForm />);
 
+        if (key.startsWith(`ll_result:${clientId}:`) && payload) {
+          
+          browser.storage.local.remove(key).catch(console.error);
+
+          if (payload.data.status !== "Accepted") {
+            console.log("❌ Submission not accepted. Ignoring.");
+            continue;
+          }
+
+          console.log("📦 State update received, rendering UI:", payload.data);
+          if (currentUiRoot === null) {
+            const ui = await createShadowRootUi(ctx, {
+              name: "leetcode-review-drawer",
+              position: "inline",
+              anchor: "body",
+              onMount(uiContainer) {
+                currentUiRoot = ReactDOM.createRoot(uiContainer);
+                  currentUiRoot.render(<ReviewForm />);
+                  return currentUiRoot;
+                  //INGORE for now and just agree on accepted
+              },
+              onRemove: (root) => { if (root) root.unmount(); },
+            });
+            ui.mount();
           }
         }
       }
     });
-  
-    const ui = await createShadowRootUi(ctx, {
-      name: "leetcode-review-drawer",
-      position: "inline",
-      anchor: "body",
-      onMount(uiContainer) {
-        currentUiRoot = ReactDOM.createRoot(uiContainer);
-        currentUiRoot.render(<ReviewForm />);
-        return currentUiRoot;
-      },
-      onRemove: (root) => { if (root) root.unmount(); },
-    });
-    ui.mount();
 
     // 5. Inject the secure bridge
     const script = document.createElement("script");
-    script.src = (browser.runtime.getURL as (path: string) => string)("/inject.js");
+    script.src = (browser.runtime.getURL as (path: string) => string)("/inject_script.js");
     // Pass metadata safely via dataset
     script.dataset.token = SECURE_TOKEN;
     script.dataset.clientId = clientId;
