@@ -1,7 +1,24 @@
 /* LeetLedger content script styles */
 :root {
-  /* Ensures content.css is emitted for createShadowRootUi */
   --review-drawer-width: 400px;
   --review-drawer-height: 100vh;
-  
+}
+
+/* Review drawer container (matches the div from reviewForm.tsx) */
+.review-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--review-drawer-width);
+  height: var(--review-drawer-height);
+  background: white;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  z-index: 2147483647;
+  padding: 24px;
+}
+
+.review-drawer h2 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
 }

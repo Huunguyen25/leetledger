@@ -3,93 +3,108 @@ import ReactDOM from "react-dom/client";
 import ReviewForm from "@/components/ReviewDrawer/ReviewForm";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 
-interface SubmissionStoragePayload {
-  data: {
-    status: string;
-    runtime: string;
-    memory: string;
-    runtimePercentile: number;
-    memoryPercentile: number;
-    problemSlug: string;
-  };
-  timestamp: number;
+import constants from "@/constants";
+import type { SubmissionStorageValue } from "@/types/submission";
+
+function getProblemSlug(): string {
+  const slug = window.location.pathname.split("/")[2];
+  return slug || "unknown-problem";
+}
+
+function createBridgeScript(
+  token: string,
+  clientId: string,
+  problemSlug: string,
+) {
+  const script = document.createElement("script");
+  script.src = browser.runtime.getURL("/fetch-bridge.js");
+  script.dataset.token = token;
+  script.dataset.clientId = clientId;
+  script.dataset.problemSlug = problemSlug;
+  return script;
 }
 
 export default defineContentScript({
   matches: ["*://*.leetcode.com/*"],
   cssInjectionMode: "ui",
-  
+
   async main(ctx) {
-    const SECURE_TOKEN = crypto.randomUUID();
+    const token = crypto.randomUUID();
     const clientId = crypto.randomUUID();
+    const problemSlug = getProblemSlug();
+    let reactRoot: ReactDOM.Root | null = null;
 
-    const problemSlug = window.location.pathname.split('/')[2] || "unknown-problem";
+    window.addEventListener("message", (event) => {
+      if (event.source !== window || event.origin !== window.location.origin)
+        return;
 
-    let currentUiRoot: ReactDOM.Root | null = null;
+      const { type, token: msgToken } = event.data ?? {};
 
-    window.addEventListener('message', (event) => {
-      if (event.source !== window) return;
-      if (event.origin !== window.location.origin) return;
+      if (
+        type !== constants.MESSAGE_TYPES.SUBMISSION_INTERCEPTED ||
+        msgToken !== token
+      )
+        return;
 
-      const data = event.data;
-      if (data?.type === 'LEETCODE_SUBMISSION_INTERCEPTED' && data.token === SECURE_TOKEN) {
-        console.log("🔒 Securely intercepted accepted submission!");
-        
-        // Push to background script strictly for processing and storage
-        browser.runtime.sendMessage({
-          type: "SUBMISSION_RESULT",
-          clientId: data.clientId,
-          attemptId: data.attemptId,
-          problemSlug: data.problemSlug,
-          submissionData: data.submissionData
-        });
-      }
+      console.log("🔒 Securely intercepted accepted submission!");
+
+      // Push to background script strictly for processing and storage
+      browser.runtime.sendMessage({
+        type: constants.MESSAGE_TYPES.SUBMISSION_RESULT,
+        clientId: event.data.clientId,
+        attemptId: event.data.attemptId,
+        problemSlug: event.data.problemSlug,
+        submissionData: event.data.submissionData,
+      });
     });
 
-    browser.storage.local.onChanged.addListener(async(changes) => {
-      for (const [key, change ] of Object.entries(changes)) {
-        // payload saved 
-        const payload = change.newValue as SubmissionStoragePayload | undefined;
+    browser.storage.local.onChanged.addListener(async (changes) => {
+      for (const [key, change] of Object.entries(changes)) {
+        const payload = change.newValue as SubmissionStorageValue | undefined;
+        if (
+          !key.startsWith(`${constants.STORAGE_PREFIX}${clientId}:`) ||
+          !payload
+        )
+          continue;
 
-        if (key.startsWith(`ll_result:${clientId}:`) && payload) {
-          
-          browser.storage.local.remove(key).catch(console.error);
+        browser.storage.local.remove(key).catch(console.error);
 
-          if (payload.data.status !== "Accepted") {
-            console.log("❌ Submission not accepted. Ignoring.");
-            continue;
-          }
+        if (payload.data.status !== "Accepted") continue;
 
-          console.log("📦 State update received, rendering UI:", payload.data);
-          if (currentUiRoot === null) {
-            const ui = await createShadowRootUi(ctx, {
-              name: "leetcode-review-drawer",
-              position: "inline",
-              anchor: "body",
-              onMount(uiContainer) {
-                currentUiRoot = ReactDOM.createRoot(uiContainer);
-                  currentUiRoot.render(<ReviewForm />);
-                  return currentUiRoot;
-                  //INGORE for now and just agree on accepted
-              },
-              onRemove: (root) => { if (root) root.unmount(); },
-            });
-            ui.mount();
-          }
+        if (reactRoot === null) {
+          let ReviewFormUI: any;
+          ReviewFormUI = await createShadowRootUi(ctx, {
+            name: "leetcode-review-drawer",
+            position: "inline",
+            anchor: "body",
+            onMount(uiContainer) {
+              reactRoot = ReactDOM.createRoot(uiContainer);
+              reactRoot.render(
+                <ReviewForm
+                  onCancel={() => {
+                    console.log("🔒 Review form cancelled");
+                    ReviewFormUI?.remove();
+                    ReviewFormUI = null;
+                    reactRoot?.unmount();
+                    reactRoot = null;
+                  }}
+                />,
+              );
+              return reactRoot;
+            },
+            onRemove: (root) => {
+              root?.unmount();
+            },
+          });
+          ReviewFormUI.mount();
         }
       }
     });
 
     // 5. Inject the secure bridge
-    const script = document.createElement("script");
-    script.src = (browser.runtime.getURL as (path: string) => string)("/inject_script.js");
-    // Pass metadata safely via dataset
-    script.dataset.token = SECURE_TOKEN;
-    script.dataset.clientId = clientId;
-    script.dataset.problemSlug = problemSlug;
-    
+    const script = createBridgeScript(token, clientId, problemSlug);
+
     (document.head || document.documentElement).appendChild(script);
     script.onload = () => script.remove(); // Cleanup DOM immediately
-
   },
 });

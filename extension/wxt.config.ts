@@ -11,7 +11,7 @@ export default defineConfig({
     host_permissions: ["https://leetcode.com/*", "https://leetcode-cn.com/*"],
     web_accessible_resources: [
       {
-        resources: ["/inject_script.js"],
+        resources: ["/fetch-bridge.js"],
         matches: ["*://*.leetcode.com/*"],
       },
     ],
