@@ -1,10 +1,17 @@
 /**
- * This script is injected into the LeetCode page to intercept the submission check request and send the data to the content script.
- * @param token - The token passed from the content script via the script tag's dataset.
- * @param clientId - The client ID passed from the content script via the script tag's dataset.
- * @param problemSlug - The problem slug passed from the content script via the script tag's dataset.
- * @returns The original fetch function.
+ * Injected into the LeetCode page to intercept the submission check request.
+ *
+ * Configuration is passed via the <script> tag's data attributes:
+ * - data-token: random token to correlate with the content script
+ * - data-client-id: ID for this content script instance
+ * - data-problem-slug: the current problem slug
+ *
+ * The script:
+ * - Wraps window.fetch
+ * - Detects /submissions/detail/{id}/check/ requests
+ * - Posts a structured message back to the page (and then to the content script)
  */
+
 import constants from "@/constants";
 
 export default defineUnlistedScript(() => {

@@ -1,3 +1,4 @@
+import constants from "@/constants";
 /**
  * Checks if a URL is a submission check URL.
  */
@@ -10,7 +11,7 @@ export function isSubmissionUrl(url: string): boolean {
  * Returns null if the URL doesn't match the expected pattern.
  */
 export function extractSubmissionId(url: string): string | null {
-  const match = url.match(/\/submissions\/detail\/([^/]+)\/check\//);
+  const match = url.match(constants.SUBMISSION_ID_EXTRACT_REGEX);
   return match ? match[1] : null;
 }
 
@@ -18,7 +19,7 @@ export function extractSubmissionId(url: string): string | null {
  * Checks if a submission ID is a valid numeric submission (not a test run).
  */
 export function isValidSubmissionId(submissionId: string): boolean {
-  return /^\d+$/.test(submissionId);
+  return constants.VALID_SUBMISSION_ID_REGEX.test(submissionId);
 }
 
 /**

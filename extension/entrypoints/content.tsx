@@ -2,6 +2,7 @@ import "@/components/ReviewDrawer/style.css";
 import ReactDOM from "react-dom/client";
 import ReviewForm from "@/components/ReviewDrawer/ReviewForm";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
+import type { SubmissionInterceptedMessage } from "@/types/submission";
 
 import constants from "@/constants";
 import type { SubmissionStorageValue } from "@/types/submission";
@@ -9,6 +10,12 @@ import type { SubmissionStorageValue } from "@/types/submission";
 function getProblemSlug(): string {
   const slug = window.location.pathname.split("/")[2];
   return slug || "unknown-problem";
+}
+function getProblemDifficulty(): string {
+  const diffEl = document.querySelector(
+    '[class*="text-difficulty-easy"], [class*="text-difficulty-medium"], [class*="text-difficulty-hard"]',
+  );
+  return diffEl?.textContent?.trim() ?? "Unknown";
 }
 
 function createBridgeScript(
@@ -24,11 +31,57 @@ function createBridgeScript(
   return script;
 }
 
+function isSubmissionInterceptedMessage(
+  data: any,
+  expectedToken: string,
+): data is SubmissionInterceptedMessage {
+  return (
+    data?.type === constants.MESSAGE_TYPES.SUBMISSION_INTERCEPTED &&
+    data?.token === expectedToken &&
+    typeof data.clientId === "string" &&
+    typeof data.attemptId === "string"
+  );
+}
+
 export default defineContentScript({
   matches: ["*://*.leetcode.com/*"],
   cssInjectionMode: "ui",
 
   async main(ctx) {
+    
+    const DEV_PREVIEW = true;
+    if (DEV_PREVIEW) {
+      const ui = await createShadowRootUi(ctx, {
+        name: "leetcode-review-drawer",
+        position: "inline",
+        anchor: "body",
+        onMount(uiContainer) {
+          const root = ReactDOM.createRoot(uiContainer);
+          root.render(
+            <ReviewForm
+              submissionData={{
+                status: "Accepted",
+                runtime: "4 ms",
+                memory: "42.1 MB",
+                runtimePercentile: 95.3,
+                memoryPercentile: 88.7,
+                problemSlug: "two-sum",
+                difficulty: "Easy",
+              }}
+              onCancel={() => {
+                ui?.remove();
+                root.unmount();
+              }}
+            />,
+          );
+          return root;
+        },
+        onRemove: (root) => root?.unmount(),
+      });
+      ui.mount();
+      return; // skip all real interception logic
+    }
+
     const token = crypto.randomUUID();
     const clientId = crypto.randomUUID();
     const problemSlug = getProblemSlug();
@@ -38,13 +91,7 @@ export default defineContentScript({
       if (event.source !== window || event.origin !== window.location.origin)
         return;
 
-      const { type, token: msgToken } = event.data ?? {};
-
-      if (
-        type !== constants.MESSAGE_TYPES.SUBMISSION_INTERCEPTED ||
-        msgToken !== token
-      )
-        return;
+      if (!isSubmissionInterceptedMessage(event.data, token)) return;
 
       console.log("🔒 Securely intercepted accepted submission!");
 
@@ -55,6 +102,7 @@ export default defineContentScript({
         attemptId: event.data.attemptId,
         problemSlug: event.data.problemSlug,
         submissionData: event.data.submissionData,
+        difficulty: getProblemDifficulty(),
       });
     });
 
@@ -81,6 +129,7 @@ export default defineContentScript({
               reactRoot = ReactDOM.createRoot(uiContainer);
               reactRoot.render(
                 <ReviewForm
+                  submissionData={payload.data}
                   onCancel={() => {
                     console.log("🔒 Review form cancelled");
                     ReviewFormUI?.remove();

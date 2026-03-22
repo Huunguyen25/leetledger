@@ -3,6 +3,16 @@
   --review-drawer-width: 400px;
   --review-drawer-height: 100vh;
 }
+.difficulty-badge[data-difficulty="easy"] {
+  --difficulty-badge-color: var(--difficulty-easy);
+}
+.difficulty-badge[data-difficulty="medium"] {
+  --difficulty-badge-color: var(--difficulty-medium);
+}
+.difficulty-badge[data-difficulty="hard"] {
+  --difficulty-badge-color: var(--difficulty-hard);
+}
+
 
 /* Review drawer container (matches the div from reviewForm.tsx) */
 .review-drawer {
@@ -21,4 +31,20 @@
   font-size: 1.25rem;
   font-weight: bold;
   margin-bottom: 1rem;
+}
+
+.difficulty-badge {
+  display: inline-block;
+  border-radius: 5px;
+  padding: 2px;
+  border: 2px solid var(--difficulty-badge-color);
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: capitalize;
+  color: var(--difficulty-badge-color);
+  min-width: 35px;
+  text-align: center;
+}
+.difficulty-badge p {
+  margin: 0;
 }
