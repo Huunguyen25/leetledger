@@ -70,7 +70,7 @@ export default function ReviewForm({
         </div>
       </div>
       <div className="difficulty-slider">
-        <p>Difficulty: {difficulty}</p>
+        <p>Difficulty:</p>
         <DifficultySlider
           value={difficulty}
           onChange={handleDifficultyChange}
