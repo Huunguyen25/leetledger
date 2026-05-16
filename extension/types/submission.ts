@@ -19,7 +19,6 @@ export interface SubmissionInterceptedMessage {
   type: string; // narrowed by constants.MESSAGE_TYPES.SUBMISSION_INTERCEPTED
   token: string;
   clientId: string;
-  problemSlug: string;
   attemptId: string;
   submissionData: Record<string, unknown>;
 }

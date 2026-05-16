@@ -8,7 +8,7 @@ const constants = {
   /** Regex: submission ID must be numeric (excludes "Run Code" / test runs) */
   VALID_SUBMISSION_ID_REGEX: /^\d+$/,
   /** Regex: extract ID from /submissions/detail/{id}/check/ */
-  SUBMISSION_ID_EXTRACT_REGEX: /\/submissions\/detail\/([^/]+)\/check\//,
+  SUBMISSION_ID_EXTRACT_REGEX: /\/submissions\/detail\/([^/]+)\/(?:v\d+\/)?check\//,
 };
 
 export default constants;

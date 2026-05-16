@@ -16,25 +16,19 @@ interface ReviewFormProps {
   onCancel: () => void;
 }
 interface UserReviewData {
-  // 1. The Core SRS Metric 1/10 slider
   difficulty: number;
-
-  // 2. The Assistance Metric dropdown
-  assistanceLevel: "SOLO" | "LOGIC_PEEK" | "SOLUTION_COPIED";
-
-  // 3. The Context textarea
-  notes: string; // e.g., "Sort intervals by end time, not start time!"
-
-  // Optional but highly recommended for analytics later number field
-  timeSpentMinutes?: number; // e.g., 25
+  assistanceLevel: "NONE" | "LOGIC_PEEK" | "SOLUTION_COPIED";
+  notes: string;
+  timeSpentMinutes?: number;
 }
+const ASSISTANCE_LEVELS = ["None", "Logic Peek", "Solution Copied"] as const;
 
 export default function ReviewForm({
   submissionData,
   onCancel,
 }: ReviewFormProps) {
-  const [difficulty, setDifficulty] = useState(5);
-  const [assistanceLevel, setAssistanceLevel] = useState<string>("SOLO");
+  const [difficulty, setDifficulty] = useState(1);
+  const [assistanceLevel, setAssistanceLevel] = useState<string>("NONE");
   const handleDifficultyChange = (value: number) => {
     setDifficulty(value);
   };
@@ -42,8 +36,12 @@ export default function ReviewForm({
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
     setAssistanceLevel(
-      event.target.value as "SOLO" | "LOGIC_PEEK" | "SOLUTION_COPIED",
+      event.target.value as UserReviewData["assistanceLevel"],
     );
+  };
+  const [notes, setNotes] = useState("");
+  const handleNotesChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNotes(event.target.value);
   };
   return (
     <div className="review-drawer">
@@ -62,7 +60,6 @@ export default function ReviewForm({
           <p>{submissionData?.difficulty}</p>
         </div>
       </div>
-
       <div className="complexity-metrics">
         <div className="complexity-metric">
           <p>Runtime: {submissionData?.runtime}</p>
@@ -79,10 +76,16 @@ export default function ReviewForm({
       <div className="assistance-level">
         <p>Assistance Level</p>
         <select value={assistanceLevel} onChange={handleAssistanceLevelChange}>
-          <option value="SOLO">Solo</option>
-          <option value="LOGIC_PEEK">Logic Peek</option>
-          <option value="SOLUTION_COPIED">Solution Copied</option>
+        {ASSISTANCE_LEVELS.map((level) => (
+          <option key={level} value={level}>
+            {level}
+          </option>
+        ))}
         </select>
+      </div>
+      <div className="notes-textarea">
+        <p>Notes</p>
+        <textarea value={notes} onChange={handleNotesChange} placeholder="What was the approach you took to solve the problem?" wrap="hard"/>
       </div>
       <button>Submit</button>
     </div>

@@ -5,7 +5,7 @@ const DifficultySlider = ({
   value,
   onChange,
   min = 1,
-  max = 10,
+  max = 5,
   step = 1,
 }: {
   value: number;
@@ -16,6 +16,10 @@ const DifficultySlider = ({
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
 
+  // const marks = Array.from(
+  //   { length: (max - min) / step + 1 },
+  //   (_, i) => min + i * step,
+  // );
   const marks = Array.from(
     { length: (max - min) / step + 1 },
     (_, i) => min + i * step,

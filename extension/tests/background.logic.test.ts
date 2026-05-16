@@ -4,7 +4,7 @@ import {
   extractSubmissionId,
   isValidSubmissionId,
   createSubmissionTracker,
-} from "../utils/background.logic";
+} from "../background/background.logic";
 
 describe("background.ts URL filtering", () => {
   describe("isSubmissionUrl", () => {

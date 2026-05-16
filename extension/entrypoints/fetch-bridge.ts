@@ -19,7 +19,7 @@ export default defineUnlistedScript(() => {
 
   // Retrieve tokens passed from the content script via the script tag's dataset
   const scriptTag = document.currentScript as HTMLScriptElement;
-  const { token, clientId, problemSlug } = scriptTag.dataset;
+  const { token, clientId } = scriptTag.dataset;
 
   window.fetch = async function (...args) {
     const response = await originalFetch.apply(this, args);
@@ -50,7 +50,6 @@ export default defineUnlistedScript(() => {
                 type: constants.MESSAGE_TYPES.SUBMISSION_INTERCEPTED,
                 token,
                 clientId,
-                problemSlug,
                 attemptId: submissionId,
                 submissionData: data,
               },

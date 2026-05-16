@@ -18,28 +18,47 @@ function getProblemDifficulty(): string {
   return diffEl?.textContent?.trim() ?? "Unknown";
 }
 
+function onPathnameChange(handler: () => void) {
+  let lastPathname = window.location.pathname;
+  const sync = () => {
+    const next = window.location.pathname;
+    if (next === lastPathname) return;
+    lastPathname = next;
+    handler();
+  };
+  window.addEventListener("popstate", sync);
+  for (const key of ["pushState", "replaceState"] as const) {
+    const origReplace = history.replaceState.bind(history);
+    history.replaceState = function (...args: Parameters<History["replaceState"]>) {
+      const ret = origReplace(...args);
+      queueMicrotask(sync);
+      return ret;
+    };
+  }
+}
+
 function createBridgeScript(
   token: string,
-  clientId: string,
-  problemSlug: string,
+  clientId: string
 ) {
   const script = document.createElement("script");
   script.src = browser.runtime.getURL("/fetch-bridge.js");
   script.dataset.token = token;
   script.dataset.clientId = clientId;
-  script.dataset.problemSlug = problemSlug;
   return script;
 }
 
 function isSubmissionInterceptedMessage(
-  data: any,
+  data: unknown,
   expectedToken: string,
 ): data is SubmissionInterceptedMessage {
+  if (!data || typeof data !== "object") return false;
+  const m = data as Record<string, unknown>;
   return (
-    data?.type === constants.MESSAGE_TYPES.SUBMISSION_INTERCEPTED &&
-    data?.token === expectedToken &&
-    typeof data.clientId === "string" &&
-    typeof data.attemptId === "string"
+    m.type === constants.MESSAGE_TYPES.SUBMISSION_INTERCEPTED &&
+    m.token === expectedToken &&
+    typeof m.clientId === "string" &&
+    typeof m.attemptId === "string"
   );
 }
 
@@ -49,43 +68,54 @@ export default defineContentScript({
 
   async main(ctx) {
     
-    const DEV_PREVIEW = true;
-    if (DEV_PREVIEW) {
-      const ui = await createShadowRootUi(ctx, {
-        name: "leetcode-review-drawer",
-        position: "inline",
-        anchor: "body",
-        onMount(uiContainer) {
-          const root = ReactDOM.createRoot(uiContainer);
-          root.render(
-            <ReviewForm
-              submissionData={{
-                status: "Accepted",
-                runtime: "4 ms",
-                memory: "42.1 MB",
-                runtimePercentile: 95.3,
-                memoryPercentile: 88.7,
-                problemSlug: "two-sum",
-                difficulty: "Easy",
-              }}
-              onCancel={() => {
-                ui?.remove();
-                root.unmount();
-              }}
-            />,
-          );
-          return root;
-        },
-        onRemove: (root) => root?.unmount(),
-      });
-      ui.mount();
-      return; // skip all real interception logic
-    }
+    // const DEV_PREVIEW = false;
+    // if (DEV_PREVIEW) {
+    //   const ui = await createShadowRootUi(ctx, {
+    //     name: "leetcode-review-drawer",
+    //     position: "inline",
+    //     anchor: "body",
+    //     onMount(uiContainer) {
+    //       const root = ReactDOM.createRoot(uiContainer);
+    //       root.render(
+    //         <ReviewForm
+    //           submissionData={{
+    //             status: "Accepted",
+    //             runtime: "4 ms",
+    //             memory: "42.1 MB",
+    //             runtimePercentile: 95.3,
+    //             memoryPercentile: 88.7,
+    //             problemSlug: "two-sum",
+    //             difficulty: "Easy",
+    //           }}
+    //           onCancel={() => {
+    //             ui?.remove();
+    //             root.unmount();
+    //           }}
+    //         />,
+    //       );
+    //       return root;
+    //     },
+    //     onRemove: (root) => root?.unmount(),
+    //   });
+    //   ui.mount();
+    //   return; // skip all real interception logic
+    // }
 
     const token = crypto.randomUUID();
     const clientId = crypto.randomUUID();
-    const problemSlug = getProblemSlug();
     let reactRoot: ReactDOM.Root | null = null;
+    let reviewFormShell: { remove: () => void } | null = null;
+
+    function teardownReviewForm() {
+      reviewFormShell?.remove();
+      reviewFormShell = null;
+      reactRoot?.unmount();
+      reactRoot = null;
+    }
+
+    onPathnameChange(() => {
+      teardownReviewForm();
+    });
 
     window.addEventListener("message", (event) => {
       if (event.source !== window || event.origin !== window.location.origin)
@@ -100,7 +130,7 @@ export default defineContentScript({
         type: constants.MESSAGE_TYPES.SUBMISSION_RESULT,
         clientId: event.data.clientId,
         attemptId: event.data.attemptId,
-        problemSlug: event.data.problemSlug,
+        problemSlug: getProblemSlug(),
         submissionData: event.data.submissionData,
         difficulty: getProblemDifficulty(),
       });
@@ -131,11 +161,7 @@ export default defineContentScript({
                 <ReviewForm
                   submissionData={payload.data}
                   onCancel={() => {
-                    console.log("🔒 Review form cancelled");
-                    ReviewFormUI?.remove();
-                    ReviewFormUI = null;
-                    reactRoot?.unmount();
-                    reactRoot = null;
+                    teardownReviewForm();
                   }}
                 />,
               );
@@ -151,7 +177,7 @@ export default defineContentScript({
     });
 
     // 5. Inject the secure bridge
-    const script = createBridgeScript(token, clientId, problemSlug);
+    const script = createBridgeScript(token, clientId);
 
     (document.head || document.documentElement).appendChild(script);
     script.onload = () => script.remove(); // Cleanup DOM immediately
