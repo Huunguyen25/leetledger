@@ -14,15 +14,15 @@ function normalizeSubmissionData(
   raw: Record<string, unknown>,
   problemSlug: string,
   difficulty: string,
+  code?: string | null,
+  lang?: string | null,
 ): SubmissionPayload {
   return {
     status: (raw.status_msg || raw.status) as string,
-    runtime: (raw.status_runtime ?? "") as string,
-    memory: (raw.status_memory ?? "") as string,
-    runtimePercentile: (raw.runtime_percentile ?? 0) as number,
-    memoryPercentile: (raw.memory_percentile ?? 0) as number,
     problemSlug,
     difficulty,
+    ...(code != null && { code }),
+    ...(lang != null && { lang }),
   };
 }
 
@@ -35,7 +35,7 @@ export function registerSubmissionHandler(tracker: SubmissionTracker) {
   browser.runtime.onMessage.addListener((message) => {
     if (message.type !== constants.MESSAGE_TYPES.SUBMISSION_RESULT) return;
 
-    const { submissionData, problemSlug, clientId, attemptId, difficulty } =
+    const { submissionData, problemSlug, clientId, attemptId, difficulty, typedCode, lang } =
       message;
 
     if (!clientId || !attemptId) {
@@ -69,6 +69,8 @@ export function registerSubmissionHandler(tracker: SubmissionTracker) {
         submissionData ?? {},
         problemSlug ?? "",
         difficulty ?? "",
+        typedCode,
+        lang,
       ),
       timestamp: Date.now(),
     };

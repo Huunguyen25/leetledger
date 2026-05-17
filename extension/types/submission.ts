@@ -1,12 +1,10 @@
 /** Normalized submission data shown in UI */
 export interface SubmissionPayload {
   status: string;
-  runtime: string;
-  memory: string;
-  runtimePercentile: number;
-  memoryPercentile: number;
   problemSlug: string;
   difficulty: string;
+  code?: string;
+  lang?: string;
 }
 
 /** Shape stored in browser.storage.local */
@@ -21,4 +19,6 @@ export interface SubmissionInterceptedMessage {
   clientId: string;
   attemptId: string;
   submissionData: Record<string, unknown>;
+  typedCode?: string | null;
+  lang?: string | null;
 }

@@ -1,11 +1,11 @@
 import { useRef, useCallback, useEffect } from "react";
 import "../components/ReviewDrawer/style.css";
 
-const DifficultySlider = ({
+const MasterySlider = ({
   value,
   onChange,
   min = 1,
-  max = 5,
+  max = 10,
   step = 1,
 }: {
   value: number;
@@ -16,10 +16,6 @@ const DifficultySlider = ({
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
 
-  // const marks = Array.from(
-  //   { length: (max - min) / step + 1 },
-  //   (_, i) => min + i * step,
-  // );
   const marks = Array.from(
     { length: (max - min) / step + 1 },
     (_, i) => min + i * step,
@@ -124,4 +120,4 @@ const DifficultySlider = ({
   );
 };
 
-export default DifficultySlider;
+export default MasterySlider;

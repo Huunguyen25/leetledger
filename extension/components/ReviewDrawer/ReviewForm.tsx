@@ -1,17 +1,9 @@
 import { IoMdClose } from "react-icons/io";
-import DifficultySlider from "../Slider";
+import MasterySlider from "../Slider";
 import { SubmissionPayload } from "@/types/submission";
 import "./style.css";
 interface ReviewFormProps {
-  /**
-   * Submission interface:
-   * status: string
-   * runtime: string
-   * memory: string
-   * runtimePercentile: number
-   * memoryPercentile: number
-   * problemSlug: string
-   */
+  /** Submission payload (problem slug, difficulty badge, etc.). */
   submissionData: SubmissionPayload;
   onCancel: () => void;
 }
@@ -27,10 +19,10 @@ export default function ReviewForm({
   submissionData,
   onCancel,
 }: ReviewFormProps) {
-  const [difficulty, setDifficulty] = useState(1);
+  const [masteryLevel, setMasteryLevel] = useState(1);
   const [assistanceLevel, setAssistanceLevel] = useState<string>("NONE");
-  const handleDifficultyChange = (value: number) => {
-    setDifficulty(value);
+  const handleMasteryLevelChange = (value: number) => {
+    setMasteryLevel(value);
   };
   const handleAssistanceLevelChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
@@ -53,24 +45,22 @@ export default function ReviewForm({
             .map((str) => str.charAt(0).toUpperCase() + str.slice(1))
             .join(" ")}
         </h2>
-        <div
-          className="difficulty-badge"
-          data-difficulty={submissionData?.difficulty?.toLowerCase()}
-        >
+        <div className="difficulty-badge" data-difficulty={submissionData?.difficulty?.toLowerCase()}>
           <p>{submissionData?.difficulty}</p>
         </div>
       </div>
       <div className="complexity-metrics">
         <div className="complexity-metric">
-          <p>Runtime: {submissionData?.runtime}</p>
-          <p>Memory: {submissionData?.memory}</p>
+          {/* use ai for analysis of space and time complexity */}
+          <p>Space / Time:</p>
+          <p>{}</p>
         </div>
       </div>
-      <div className="difficulty-slider">
-        <p>Difficulty:</p>
-        <DifficultySlider
-          value={difficulty}
-          onChange={handleDifficultyChange}
+      <div className="mastery-slider">
+        <p>Mastery Level:</p>
+        <MasterySlider
+          value={masteryLevel}
+          onChange={handleMasteryLevelChange}
         />
       </div>
       <div className="assistance-level">

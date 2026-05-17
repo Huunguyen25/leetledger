@@ -13,7 +13,6 @@
   --difficulty-badge-color: var(--difficulty-hard);
 }
 
-
 /* Review drawer container (matches the div from reviewForm.tsx) */
 .review-drawer {
   position: fixed;
@@ -30,18 +29,22 @@
 .review-drawer h2 {
   font-size: 1.25rem;
   font-weight: bold;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
+}
+
+.problem-header h2{
+  margin-bottom: 5px;
 }
 
 .difficulty-badge {
   display: inline-block;
   border-radius: 5px;
-  padding: 2px;
-  border: 2px solid var(--difficulty-badge-color);
+  padding: 3px;
+  background-color: var(--difficulty-badge-color);
   font-weight: 600;
   font-size: 14px;
   text-transform: capitalize;
-  color: var(--difficulty-badge-color);
+  color: white;
   min-width: 35px;
   text-align: center;
   p {
@@ -49,8 +52,8 @@
   }
 }
 
-.difficulty-slider p {
-  margin: 0;
+.mastery-slider p {
+  margin-bottom: 0;
 }
 
 

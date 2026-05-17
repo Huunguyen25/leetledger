@@ -68,38 +68,34 @@ export default defineContentScript({
 
   async main(ctx) {
     
-    // const DEV_PREVIEW = false;
-    // if (DEV_PREVIEW) {
-    //   const ui = await createShadowRootUi(ctx, {
-    //     name: "leetcode-review-drawer",
-    //     position: "inline",
-    //     anchor: "body",
-    //     onMount(uiContainer) {
-    //       const root = ReactDOM.createRoot(uiContainer);
-    //       root.render(
-    //         <ReviewForm
-    //           submissionData={{
-    //             status: "Accepted",
-    //             runtime: "4 ms",
-    //             memory: "42.1 MB",
-    //             runtimePercentile: 95.3,
-    //             memoryPercentile: 88.7,
-    //             problemSlug: "two-sum",
-    //             difficulty: "Easy",
-    //           }}
-    //           onCancel={() => {
-    //             ui?.remove();
-    //             root.unmount();
-    //           }}
-    //         />,
-    //       );
-    //       return root;
-    //     },
-    //     onRemove: (root) => root?.unmount(),
-    //   });
-    //   ui.mount();
-    //   return; // skip all real interception logic
-    // }
+    const DEV_PREVIEW = true;
+    if (DEV_PREVIEW) {
+      const ui = await createShadowRootUi(ctx, {
+        name: "leetcode-review-drawer",
+        position: "inline",
+        anchor: "body",
+        onMount(uiContainer) {
+          const root = ReactDOM.createRoot(uiContainer);
+          root.render(
+            <ReviewForm
+              submissionData={{
+                status: "Accepted",
+                problemSlug: "two-sum",
+                difficulty: "Easy",
+              }}
+              onCancel={() => {
+                ui?.remove();
+                root.unmount();
+              }}
+            />,
+          );
+          return root;
+        },
+        onRemove: (root) => root?.unmount(),
+      });
+      ui.mount();
+      return; // skip all real interception logic
+    }
 
     const token = crypto.randomUUID();
     const clientId = crypto.randomUUID();
@@ -133,6 +129,8 @@ export default defineContentScript({
         problemSlug: getProblemSlug(),
         submissionData: event.data.submissionData,
         difficulty: getProblemDifficulty(),
+        typedCode: event.data.typedCode ?? null,
+        lang: event.data.lang ?? null,
       });
     });
 
