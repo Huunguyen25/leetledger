@@ -17,6 +17,7 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "react": "^19.2.3",

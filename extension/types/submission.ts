@@ -5,6 +5,7 @@ export interface SubmissionPayload {
   difficulty: string;
   code?: string;
   lang?: string;
+  questionId?: string;
 }
 
 /** Shape stored in browser.storage.local */

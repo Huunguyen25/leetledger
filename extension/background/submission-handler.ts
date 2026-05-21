@@ -21,6 +21,7 @@ function normalizeSubmissionData(
     status: (raw.status_msg || raw.status) as string,
     problemSlug,
     difficulty,
+    ...(raw.question_id != null && { questionId: String(raw.question_id) }),
     ...(code != null && { code }),
     ...(lang != null && { lang }),
   };
@@ -34,9 +35,7 @@ function normalizeSubmissionData(
 export function registerSubmissionHandler(tracker: SubmissionTracker) {
   browser.runtime.onMessage.addListener((message) => {
     if (message.type !== constants.MESSAGE_TYPES.SUBMISSION_RESULT) return;
-
-    const { submissionData, problemSlug, clientId, attemptId, difficulty, typedCode, lang } =
-      message;
+    const { submissionData, problemSlug, clientId, attemptId, difficulty, typedCode, lang } = message;
 
     if (!clientId || !attemptId) {
       console.warn("⚠️ Missing clientId or attemptId in SUBMISSION_RESULT");
@@ -48,9 +47,8 @@ export function registerSubmissionHandler(tracker: SubmissionTracker) {
       return;
     }
 
-    if (tracker.isDuplicate(attemptId)) {
-      return;
-    }
+    if (tracker.isDuplicate(attemptId)) return;
+    
     tracker.startProcessing(attemptId);
 
     if (

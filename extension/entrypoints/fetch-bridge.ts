@@ -71,20 +71,13 @@ export default defineUnlistedScript(() => {
         const clone = response.clone();
         clone.json().then((data) => {
           if (data.state === "SUCCESS") {
-            const submissionIdMatch = url.match(
-              constants.SUBMISSION_ID_EXTRACT_REGEX,
-            );
-            const submissionId = submissionIdMatch
-              ? submissionIdMatch[1]
-              : null;
+            const requestURLsubmissionID = url.match(constants.SUBMISSION_ID_EXTRACT_REGEX);
+            const submissionId = requestURLsubmissionID ? requestURLsubmissionID[1] : null;
             // skip test runs and run code or invalid submission ids
-            if (
-              !submissionId ||
-              !constants.VALID_SUBMISSION_ID_REGEX.test(submissionId)
-            )
-              return;
+            if (!submissionId || !constants.VALID_SUBMISSION_ID_REGEX.test(submissionId)) return;
 
             const codeInfo = pendingSubmissions.get(submissionId);
+            
             pendingSubmissions.delete(submissionId);
 
             window.postMessage(

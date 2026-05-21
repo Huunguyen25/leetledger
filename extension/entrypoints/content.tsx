@@ -83,6 +83,7 @@ export default defineContentScript({
                 problemSlug: "two-sum",
                 difficulty: "Easy",
               }}
+              solvedAt={Date.now()}
               onCancel={() => {
                 ui?.remove();
                 root.unmount();
@@ -158,6 +159,7 @@ export default defineContentScript({
               reactRoot.render(
                 <ReviewForm
                   submissionData={payload.data}
+                  solvedAt={payload.timestamp}
                   onCancel={() => {
                     teardownReviewForm();
                   }}

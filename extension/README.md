@@ -12,14 +12,13 @@ Browser extension (WXT + React) for **leetcode.com** / **leetcode-cn.com**. When
 
 **Review form — capture / show:**
 
-- Last review time
-- Topics
-- Time & space complexity (from AI analysis)
-- Days passed
-- Time to solve (session / wall clock, as defined in-app)
-- Solved date
-- Problem number
-- Replace raw “difficulty” with a **mastery** level (user-rated scale)
+- [ ] Last review date
+- [ ] Solved date
+- [ ] Topics
+- [x] Time & space complexity
+- [ ] Days passed
+- [x] Problem number
+- [x] Replace raw “difficulty” with a **mastery** level (user-rated scale)
 
 ## Develop
 

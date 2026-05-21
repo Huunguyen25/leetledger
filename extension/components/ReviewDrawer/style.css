@@ -31,9 +31,35 @@
   font-weight: bold;
   margin-bottom: 0;
 }
+.problem-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
 
 .problem-header h2{
-  margin-bottom: 5px;
+  margin: 0;
+  margin-bottom: 0.5rem;
+}
+.date-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date-info .dot {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
+.date-info p{
+  font-size: 16px;
+  margin: 0;
 }
 
 .difficulty-badge {
@@ -170,4 +196,10 @@
 .marked-slider .mark-label.active {
   color: #111;
   font-weight: 500;
+}
+
+.notes-textarea textarea {
+  width: 100%; 
+  max-width: 100%; 
+  min-width: 100%;
 }
