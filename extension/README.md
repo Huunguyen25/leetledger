@@ -12,13 +12,22 @@ Browser extension (WXT + React) for **leetcode.com** / **leetcode-cn.com**. When
 
 **Review form — capture / show:**
 
-- [ ] Last review date
-- [ ] Solved date
-- [ ] Topics
-- [x] Time & space complexity
-- [ ] Days passed
-- [x] Problem number
 - [x] Replace raw “difficulty” with a **mastery** level (user-rated scale)
+- [x] Time & space complexity
+- [x] Problem number
+- [x] Solved date
+- [ ] Topics (from graphQL payload)
+
+**App.tsx -- extension menu**
+- [ ] Allow users to mute review form for a duration
+- [ ] show history of previously done question (maybe)
+- [ ] add button that directs to dashboard
+
+
+**Database**
+- [ ] wire review form to DB
+
+
 
 ## Develop
 
