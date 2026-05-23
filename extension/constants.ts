@@ -3,7 +3,6 @@ const constants = {
   MESSAGE_TYPES: {
     SUBMISSION_INTERCEPTED: "LEETCODE_SUBMISSION_INTERCEPTED",
     SUBMISSION_RESULT: "SUBMISSION_RESULT",
-    
   } as const,
   STORAGE_PREFIX: "ll_result:",
   /** Regex: submission ID must be numeric (excludes "Run Code" / test runs) */
