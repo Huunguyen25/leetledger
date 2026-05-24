@@ -74,7 +74,6 @@ export function registerSubmissionHandler(tracker: SubmissionTracker) {
         lang,
         topicTags,
       ),
-      timestamp: Date.now(),
     };
 
     browser.storage.local

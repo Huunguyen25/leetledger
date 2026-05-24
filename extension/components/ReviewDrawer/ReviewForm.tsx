@@ -5,7 +5,6 @@ import "./style.css";
 interface ReviewFormProps {
   /** Submission payload (problem slug, difficulty badge, etc.). */
   submissionData: SubmissionPayload;
-  solvedAt: number;
   onCancel: () => void;
 }
 interface UserReviewData {
@@ -18,7 +17,7 @@ interface UserReviewData {
 const ASSISTANCE_LEVELS = ["None", "Logic Peek", "Solution Copied"] as const;
 const COMPLEXITY_OPTIONS = ["O(1)", "O(log n)","O(n)", "O(n log n)", "O(n^2)", "O(2^n)"];
 
-export default function ReviewForm({submissionData, solvedAt, onCancel}: ReviewFormProps) {
+export default function ReviewForm({submissionData, onCancel}: ReviewFormProps) {
   const [masteryLevel, setMasteryLevel] = useState(1);
   const [assistanceLevel, setAssistanceLevel] = useState<string>("NONE");
 
@@ -69,13 +68,6 @@ export default function ReviewForm({submissionData, solvedAt, onCancel}: ReviewF
             .map((str) => str.charAt(0).toUpperCase() + str.slice(1))
             .join(" ")}
         </h2>
-          <div className="date-info">
-            <p>Solved at</p>
-            <span className="dot" aria-hidden="true" />
-            <p>
-              {new Date(solvedAt).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-            </p>
-          </div>
         </div>
       </div>
       <div className="complexity-metrics">

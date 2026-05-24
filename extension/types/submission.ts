@@ -18,7 +18,6 @@ export interface SubmissionPayload {
 /** Shape stored in browser.storage.local */
 export interface SubmissionStorageValue {
   data: SubmissionPayload;
-  timestamp: number;
 }
 
 export interface SubmissionInterceptedMessage {

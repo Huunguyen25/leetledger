@@ -87,7 +87,6 @@ export default defineContentScript({
                   { name: "Hash Table", slug: "hash-table" },
                 ],
               }}
-              solvedAt={Date.now()}
               onCancel={() => {
                 ui?.remove();
                 root.unmount();
@@ -168,7 +167,6 @@ export default defineContentScript({
               reactRoot.render(
                 <ReviewForm
                   submissionData={payload.data}
-                  solvedAt={payload.timestamp}
                   onCancel={() => {
                     teardownReviewForm();
                   }}

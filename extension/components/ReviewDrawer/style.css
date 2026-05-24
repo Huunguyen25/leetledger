@@ -43,24 +43,6 @@
   margin: 0;
   margin-bottom: 0.5rem;
 }
-.date-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.date-info .dot {
-  width: 2px;
-  height: 2px;
-  border-radius: 50%;
-  background: currentColor;
-  flex: 0 0 auto;
-}
-
-.date-info p{
-  font-size: 16px;
-  margin: 0;
-}
 
 .difficulty-badge {
   display: inline-block;
