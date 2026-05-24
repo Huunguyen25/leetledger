@@ -5,6 +5,7 @@ import {
 import type {
   SubmissionPayload,
   SubmissionStorageValue,
+  TopicTag,
 } from "@/types/submission";
 import constants from "@/constants";
 
@@ -16,6 +17,7 @@ function normalizeSubmissionData(
   difficulty: string,
   code?: string | null,
   lang?: string | null,
+  topicTags?: TopicTag[] | null,
 ): SubmissionPayload {
   return {
     status: (raw.status_msg || raw.status) as string,
@@ -24,6 +26,7 @@ function normalizeSubmissionData(
     ...(raw.question_id != null && { questionId: String(raw.question_id) }),
     ...(code != null && { code }),
     ...(lang != null && { lang }),
+    ...(topicTags != null && topicTags.length > 0 && { topicTags }),
   };
 }
 
@@ -35,7 +38,7 @@ function normalizeSubmissionData(
 export function registerSubmissionHandler(tracker: SubmissionTracker) {
   browser.runtime.onMessage.addListener((message) => {
     if (message.type !== constants.MESSAGE_TYPES.SUBMISSION_RESULT) return;
-    const { submissionData, problemSlug, clientId, attemptId, difficulty, typedCode, lang } = message;
+    const { submissionData, problemSlug, clientId, attemptId, difficulty, typedCode, lang, topicTags } = message;
 
     if (!clientId || !attemptId) {
       console.warn("⚠️ Missing clientId or attemptId in SUBMISSION_RESULT");
@@ -69,6 +72,7 @@ export function registerSubmissionHandler(tracker: SubmissionTracker) {
         difficulty ?? "",
         typedCode,
         lang,
+        topicTags,
       ),
       timestamp: Date.now(),
     };

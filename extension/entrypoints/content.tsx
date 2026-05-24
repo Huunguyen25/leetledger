@@ -82,6 +82,10 @@ export default defineContentScript({
                 status: "Accepted",
                 problemSlug: "two-sum",
                 difficulty: "Easy",
+                topicTags: [
+                  { name: "Array", slug: "array" },
+                  { name: "Hash Table", slug: "hash-table" },
+                ],
               }}
               solvedAt={Date.now()}
               onCancel={() => {
@@ -122,6 +126,10 @@ export default defineContentScript({
 
       console.log("🔒 Securely intercepted accepted submission!");
 
+      // Prefer the GraphQL-sourced difficulty (authoritative); fall back to DOM
+      // scrape only when the GraphQL call failed or timed out.
+      const difficulty = event.data.difficulty ?? getProblemDifficulty();
+
       // Push to background script strictly for processing and storage
       browser.runtime.sendMessage({
         type: constants.MESSAGE_TYPES.SUBMISSION_RESULT,
@@ -129,9 +137,10 @@ export default defineContentScript({
         attemptId: event.data.attemptId,
         problemSlug: getProblemSlug(),
         submissionData: event.data.submissionData,
-        difficulty: getProblemDifficulty(),
+        difficulty,
         typedCode: event.data.typedCode ?? null,
         lang: event.data.lang ?? null,
+        topicTags: event.data.topicTags ?? null,
       });
     });
 

@@ -12,13 +12,18 @@ Browser extension (WXT + React) for **leetcode.com** / **leetcode-cn.com**. When
 
 **Review form — capture / show:**
 
-- [ ] Last review date
-- [ ] Solved date
-- [ ] Topics
-- [x] Time & space complexity
-- [ ] Days passed
 - [x] Problem number
+- [x] Topics
 - [x] Replace raw “difficulty” with a **mastery** level (user-rated scale)
+- [x] Time & space complexity
+- [x] Solved date
+- [ ] **[*future fix if needed*]** lift fetchProblemMetadata to a standalone module to fetch topics and difficulties before submission.
+- [ ] fancy form up
+
+**Database - wire up / create:**
+- [ ] make database schema
+- [ ] wire review form to database and create data
+
 
 ## Develop
 

@@ -1,6 +1,6 @@
 import { IoMdClose } from "react-icons/io";
 import MasterySlider from "../Slider";
-import { SubmissionPayload } from "@/types/submission";
+import { SubmissionPayload, TopicTag } from "@/types/submission";
 import "./style.css";
 interface ReviewFormProps {
   /** Submission payload (problem slug, difficulty badge, etc.). */
@@ -13,6 +13,7 @@ interface UserReviewData {
   assistanceLevel: "NONE" | "LOGIC_PEEK" | "SOLUTION_COPIED";
   notes: string;
   timeSpentMinutes?: number;
+  topicTags: TopicTag[];
 }
 const ASSISTANCE_LEVELS = ["None", "Logic Peek", "Solution Copied"] as const;
 const COMPLEXITY_OPTIONS = ["O(1)", "O(log n)","O(n)", "O(n log n)", "O(n^2)", "O(2^n)"];
@@ -23,6 +24,10 @@ export default function ReviewForm({submissionData, solvedAt, onCancel}: ReviewF
 
   const [timeComplexity, setTimeComplexity] = useState<string>("O(1)");
   const [spaceComplexity, setSpaceComplexity] = useState<string>("O(1)");
+
+  // Topic tags arrive prefilled from LeetCode's GraphQL response and stay
+  // read-only for now — the combobox UI lands in a follow-up.
+  const [topicTags] = useState<TopicTag[]>(submissionData?.topicTags ?? []);
 
 
   const handleTimeComplexityChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -113,6 +118,21 @@ export default function ReviewForm({submissionData, solvedAt, onCancel}: ReviewF
           </option>
         ))}
         </select>
+      </div>
+      <div className="topic-tags">
+        <p>Topics</p>
+        {topicTags.length === 0 ? (
+          <p>—</p>
+        ) : (
+          <div>
+            {topicTags.map((tag) => (
+              <span key={tag.slug} className="topic-tag">
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        )}
+   
       </div>
       <div className="notes-textarea">
         <p>Notes</p>
