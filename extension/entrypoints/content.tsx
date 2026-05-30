@@ -68,7 +68,7 @@ export default defineContentScript({
 
   async main(ctx) {
     
-    const DEV_PREVIEW = true;
+    const DEV_PREVIEW = false;
     if (DEV_PREVIEW) {
       const ui = await createShadowRootUi(ctx, {
         name: "leetcode-review-drawer",
