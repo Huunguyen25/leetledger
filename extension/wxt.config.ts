@@ -4,11 +4,13 @@ import { defineConfig } from "wxt";
 export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   manifest: {
-    // 1. Add 'webRequest' to see the traffic
-    permissions: ["webRequest", "storage"],
+    // Interception is done by wrapping window.fetch in the injected bridge,
+    // so only storage is needed (no webRequest).
+    permissions: ["storage"],
 
-    // 2. Add host permissions so you can fetch the data inside the listener
-    host_permissions: ["https://leetcode.com/*", "https://leetcode-cn.com/*"],
+    // Match the content-script/web-accessible-resource patterns: any
+    // leetcode.com subdomain (e.g. www.) over http or https.
+    host_permissions: ["*://*.leetcode.com/*"],
     web_accessible_resources: [
       {
         resources: ["/fetch-bridge.js"],

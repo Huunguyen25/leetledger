@@ -1,6 +1,7 @@
 import { IoMdClose } from "react-icons/io";
 import MasterySlider from "../Slider";
 import { SubmissionPayload, TopicTag } from "@/types/submission";
+import { clearHistoryCache } from "@/lib/history-cache";
 import { upsertReview, type AssistanceLevel } from "@/lib/supabase/reviews";
 import "./style.css";
 interface ReviewFormProps {
@@ -89,6 +90,7 @@ export default function ReviewForm({submissionData, onCancel}: ReviewFormProps) 
 
     setSubmitting(false);
     if (result.success) {
+      void clearHistoryCache();
       onCancel();
     } else {
       setSubmitError(result.error);

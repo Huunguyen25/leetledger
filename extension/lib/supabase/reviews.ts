@@ -1,3 +1,7 @@
+import {
+  getHistoryCache,
+  setHistoryCache,
+} from "@/lib/history-cache";
 import { createClient } from "./client";
 import type { TopicTag } from "@/types/submission";
 
@@ -65,4 +69,120 @@ export async function upsertReview(input: ReviewInput): Promise<ReviewResult> {
     return { success: false, error: error.message };
   }
   return { success: true };
+}
+
+/** A previously-reviewed problem, shaped for the popup's solved history list. */
+export interface SolvedReview {
+  problemSlug: string;
+  problemTitle: string;
+  difficulty: string;
+  mastery: number;
+  questionId: number | null;
+  /** When the problem was last solved (set server-side by the SRS trigger). */
+  lastSolvedAt: string | null;
+  /** Next scheduled revisit date (set server-side by the SRS trigger). */
+  nextReviewDate: string | null;
+}
+
+type ListReviewsResult =
+  | { success: true; reviews: SolvedReview[] }
+  | { success: false; error: string };
+
+/**
+ * Lists the signed-in user's most recently solved problems, newest first.
+ * Row-level security already scopes reads to the current user; the explicit
+ * user_id filter keeps the query intent obvious and survives any RLS gap.
+ */
+export async function listReviews(limit = 25): Promise<ListReviewsResult> {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: authError?.message ?? "Not signed in" };
+  }
+
+  const { data, error } = await supabase
+    .from("reviews")
+    .select(
+      "problem_slug, problem_title, leetcode_difficulty, mastery, question_id, last_solved_at, next_review_date",
+    )
+    .eq("user_id", user.id)
+    .order("last_solved_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  const reviews: SolvedReview[] = (data ?? []).map((row) => ({
+    problemSlug: row.problem_slug,
+    problemTitle: row.problem_title,
+    difficulty: row.leetcode_difficulty,
+    mastery: row.mastery,
+    questionId: row.question_id,
+    lastSolvedAt: row.last_solved_at,
+    nextReviewDate: row.next_review_date,
+  }));
+
+  return { success: true, reviews };
+}
+
+export type ListReviewsCachedResult =
+  | {
+      success: true;
+      reviews: SolvedReview[];
+      fromCache: boolean;
+      needsRefresh: boolean;
+    }
+  | { success: false; error: string; reviews?: SolvedReview[] };
+
+/**
+ * Loads solved history with stale-while-revalidate caching.
+ * Fresh cache skips the network; stale cache returns immediately and sets
+ * needsRefresh so the caller can fetch in the background.
+ */
+export async function listReviewsCached(
+  userId: string,
+  options?: { force?: boolean },
+): Promise<ListReviewsCachedResult> {
+  if (!options?.force) {
+    const cached = await getHistoryCache(userId);
+    if (cached?.fresh) {
+      return {
+        success: true,
+        reviews: cached.reviews,
+        fromCache: true,
+        needsRefresh: false,
+      };
+    }
+    if (cached) {
+      return {
+        success: true,
+        reviews: cached.reviews,
+        fromCache: true,
+        needsRefresh: true,
+      };
+    }
+  }
+
+  const result = await listReviews();
+  if (!result.success) {
+    if (!options?.force) {
+      const cached = await getHistoryCache(userId);
+      if (cached) {
+        return { success: false, error: result.error, reviews: cached.reviews };
+      }
+    }
+    return { success: false, error: result.error };
+  }
+
+  await setHistoryCache(userId, result.reviews);
+  return {
+    success: true,
+    reviews: result.reviews,
+    fromCache: false,
+    needsRefresh: false,
+  };
 }

@@ -5,36 +5,16 @@ import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import type { SubmissionInterceptedMessage } from "@/types/submission";
 
 import constants from "@/constants";
+import { isMuted } from "@/lib/mute";
+import { parseProblemSlugFromPathname } from "@/lib/problem-slug";
+import { shouldTeardownReviewForm } from "@/lib/review-drawer-navigation";
 import type { SubmissionStorageValue } from "@/types/submission";
 
-function getProblemSlug(): string {
-  const slug = window.location.pathname.split("/")[2];
-  return slug || "unknown-problem";
-}
 function getProblemDifficulty(): string {
   const diffEl = document.querySelector(
     '[class*="text-difficulty-easy"], [class*="text-difficulty-medium"], [class*="text-difficulty-hard"]',
   );
   return diffEl?.textContent?.trim() ?? "Unknown";
-}
-
-function onPathnameChange(handler: () => void) {
-  let lastPathname = window.location.pathname;
-  const sync = () => {
-    const next = window.location.pathname;
-    if (next === lastPathname) return;
-    lastPathname = next;
-    handler();
-  };
-  window.addEventListener("popstate", sync);
-  for (const key of ["pushState", "replaceState"] as const) {
-    const origReplace = history.replaceState.bind(history);
-    history.replaceState = function (...args: Parameters<History["replaceState"]>) {
-      const ret = origReplace(...args);
-      queueMicrotask(sync);
-      return ret;
-    };
-  }
 }
 
 function createBridgeScript(
@@ -104,17 +84,34 @@ export default defineContentScript({
     const token = crypto.randomUUID();
     const clientId = crypto.randomUUID();
     let reactRoot: ReactDOM.Root | null = null;
-    let reviewFormShell: { remove: () => void } | null = null;
+    let reviewFormUi: { mount: () => void; remove: () => void } | null = null;
+    // Guards the async gap between deciding to mount and the UI being ready, so
+    // rapid storage changes can't spawn duplicate drawers.
+    let mountingReviewForm = false;
+    let boundProblemSlug: string | null = null;
 
     function teardownReviewForm() {
-      reviewFormShell?.remove();
-      reviewFormShell = null;
-      reactRoot?.unmount();
+      // ui.remove() triggers onRemove, which unmounts the React root.
+      reviewFormUi?.remove();
+      reviewFormUi = null;
       reactRoot = null;
+      mountingReviewForm = false;
+      boundProblemSlug = null;
     }
 
-    onPathnameChange(() => {
-      teardownReviewForm();
+    // LeetCode is a Next.js SPA whose router calls history.pushState in the
+    // page's main world; a content script can't observe that by patching
+    // history in its isolated world. WXT's location watcher detects URL changes
+    // via the Navigation API (polling fallback). Tear down only when navigation
+    // leaves the bound problem (different slug or non-problem route), not on
+    // intra-problem tab switches such as Accepted → Code.
+    ctx.addEventListener(window, "wxt:locationchange", () => {
+      if (
+        boundProblemSlug &&
+        shouldTeardownReviewForm(window.location.pathname, boundProblemSlug)
+      ) {
+        teardownReviewForm();
+      }
     });
 
     window.addEventListener("message", (event) => {
@@ -134,7 +131,9 @@ export default defineContentScript({
         type: constants.MESSAGE_TYPES.SUBMISSION_RESULT,
         clientId: event.data.clientId,
         attemptId: event.data.attemptId,
-        problemSlug: getProblemSlug(),
+        problemSlug:
+          parseProblemSlugFromPathname(window.location.pathname) ??
+          "unknown-problem",
         submissionData: event.data.submissionData,
         difficulty,
         typedCode: event.data.typedCode ?? null,
@@ -156,30 +155,40 @@ export default defineContentScript({
 
         if (payload.data.status !== "Accepted") continue;
 
-        if (reactRoot === null) {
-          let ReviewFormUI: any;
-          ReviewFormUI = await createShadowRootUi(ctx, {
-            name: "leetcode-review-drawer",
-            position: "inline",
-            anchor: "body",
-            onMount(uiContainer) {
-              reactRoot = ReactDOM.createRoot(uiContainer);
-              reactRoot.render(
-                <ReviewForm
-                  submissionData={payload.data}
-                  onCancel={() => {
-                    teardownReviewForm();
-                  }}
-                />,
-              );
-              return reactRoot;
-            },
-            onRemove: (root) => {
-              root?.unmount();
-            },
-          });
-          ReviewFormUI.mount();
+        // Respect a popup-set mute window: still consume the result above so it
+        // doesn't pile up in storage, but skip surfacing the review drawer.
+        if (await isMuted()) continue;
+
+        if (reactRoot !== null || mountingReviewForm) continue;
+        mountingReviewForm = true;
+
+        const ui = await createShadowRootUi(ctx, {
+          name: "leetcode-review-drawer",
+          position: "inline",
+          anchor: "body",
+          onMount(uiContainer) {
+            const root = ReactDOM.createRoot(uiContainer);
+            reactRoot = root;
+            root.render(
+              <ReviewForm
+                submissionData={payload.data}
+                onCancel={teardownReviewForm}
+              />,
+            );
+            return root;
+          },
+          onRemove: (root) => root?.unmount(),
+        });
+
+        // A teardown (navigation/cancel) may have fired during the await above.
+        if (!mountingReviewForm) {
+          ui.remove();
+          continue;
         }
+        reviewFormUi = ui;
+        mountingReviewForm = false;
+        boundProblemSlug = payload.data.problemSlug;
+        ui.mount();
       }
     });
 

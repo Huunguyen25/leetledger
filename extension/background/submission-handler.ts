@@ -11,6 +11,27 @@ import constants from "@/constants";
 
 type SubmissionTracker = ReturnType<typeof createSubmissionTracker>;
 
+/**
+ * Result keys are namespaced by a per-page-session clientId and are normally
+ * removed the moment the live content script consumes the storage.onChanged
+ * event. If a tab is closed/reloaded before consuming one, its key is orphaned
+ * (no future client shares that clientId). Sweep them on service-worker startup
+ * so browser.storage.local doesn't grow without bound.
+ */
+export async function clearStaleResults(): Promise<void> {
+  try {
+    const all = await browser.storage.local.get();
+    const staleKeys = Object.keys(all).filter((key) =>
+      key.startsWith(constants.STORAGE_PREFIX),
+    );
+    if (staleKeys.length > 0) {
+      await browser.storage.local.remove(staleKeys);
+    }
+  } catch (err) {
+    console.error("Failed to clear stale results:", err);
+  }
+}
+
 function normalizeSubmissionData(
   raw: Record<string, unknown>,
   problemSlug: string,

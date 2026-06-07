@@ -1,6 +1,6 @@
 # LeetLedger extension
 
-Browser extension (WXT + React) for **leetcode.com** / **leetcode-cn.com**. When you get an **Accepted** submission, it can capture context, open a quick **review** UI on the page, and **track** problems and revisit timing. Optional **Supabase** sync backs up cloud-side data.
+Browser extension (WXT + React) for **leetcode.com**. When you get an **Accepted** submission, it can capture context, open a quick **review** UI on the page, and **track** problems and revisit timing. Optional **Supabase** sync backs up cloud-side data.
 
 ## Pieces
 
@@ -24,8 +24,12 @@ Browser extension (WXT + React) for **leetcode.com** / **leetcode-cn.com**. When
 - [ ] make database schema
 - [ ] wire review form to database and create data
 
+**Popup**
+- [x] mute review form w/ duration
+- [x] open dashboard
+- [x] solved history
 
-## Develop
+make sure extension does not leak storage
 
 From this directory:
 

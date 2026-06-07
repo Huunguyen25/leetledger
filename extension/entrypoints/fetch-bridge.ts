@@ -18,6 +18,7 @@
  */
 
 import constants from "@/constants";
+import { parseProblemSlugFromPathname } from "@/lib/problem-slug";
 import type { TopicTag } from "@/types/submission";
 
 interface PendingCodeInfo {
@@ -41,12 +42,6 @@ const PROBLEM_METADATA_QUERY = `query leetledgerProblemMetadata($titleSlug: Stri
 const METADATA_FETCH_TIMEOUT_MS = 3000;
 
 const EMPTY_METADATA: ProblemMetadata = { topicTags: null, difficulty: null };
-
-function getCurrentTitleSlug(): string | null {
-  const parts = window.location.pathname.split("/");
-  if (parts[1] === "problems" && parts[2]) return parts[2];
-  return null;
-}
 
 // Django sets csrftoken on the auth domain. We need to echo it in
 // X-CSRFToken on POSTs so the GraphQL endpoint accepts our request.
@@ -152,7 +147,9 @@ export default defineUnlistedScript(() => {
           };
           const { typed_code: typedCode, lang } = body;
           if (typedCode) {
-            const titleSlug = getCurrentTitleSlug();
+            const titleSlug = parseProblemSlugFromPathname(
+              window.location.pathname,
+            );
 
             // Warm the metadata cache in parallel with LeetCode's check polling.
             // Fire-and-forget: any rejection is swallowed inside fetchProblemMetadata.
@@ -194,7 +191,9 @@ export default defineUnlistedScript(() => {
 
           // Prefer the slug captured at /submit/ time over the live URL,
           // in case the user navigated mid-poll.
-          const titleSlug = codeInfo?.titleSlug ?? getCurrentTitleSlug();
+          const titleSlug =
+            codeInfo?.titleSlug ??
+            parseProblemSlugFromPathname(window.location.pathname);
           const { topicTags, difficulty } =
             await fetchProblemMetadataWithTimeout(titleSlug);
 

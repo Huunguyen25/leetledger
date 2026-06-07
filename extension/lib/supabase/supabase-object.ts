@@ -39,6 +39,10 @@ async function verifyEmailOtp(
   const { error } = await supabase.auth.verifyOtp({
     email,
     token,
+    // "email" is the correct type for OTP login and also verifies the
+    // auto-created user from signInWithOtp({ shouldCreateUser: true }).
+    // "signup" only matches a brand-new unconfirmed user's token, so reusing
+    // an existing email made the server reject the code as otp_expired.
     type: "email",
   });
   if (error) {

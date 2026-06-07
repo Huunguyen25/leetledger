@@ -2,6 +2,13 @@ import "./App.css";
 import supabaseApi from "@/lib/supabase/supabase-object";
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import Dashboard from "./components/Dashboard";
+import { clearHistoryCache } from "@/lib/history-cache";
+import {
+  clearPendingOtp,
+  getPendingOtp,
+  setPendingOtp,
+} from "@/lib/pending-otp";
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -10,20 +17,34 @@ function App() {
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Gates the first render until session + persisted OTP state are read, so the
+  // email form doesn't flash before we know there's a pending verification.
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    supabaseApi.client.auth
-      .getSession()
-      .then(({ data }) => setSession(data.session));
+    Promise.all([
+      supabaseApi.client.auth.getSession(),
+      getPendingOtp(),
+    ])
+      .then(([{ data }, pending]) => {
+        setSession(data.session);
+        // Only restore the verify form when not already signed in.
+        if (!data.session && pending) setPendingEmail(pending);
+      })
+      .finally(() => setInitializing(false));
 
     const { data: sub } = supabaseApi.client.auth.onAuthStateChange(
       (_event, nextSession) => {
         setSession(nextSession);
         if (nextSession) {
+          void clearPendingOtp();
           setPendingEmail(null);
           setEmail("");
           setCode("");
           setError(null);
+        } else {
+          void clearHistoryCache();
+          void clearPendingOtp();
         }
       },
     );
@@ -39,6 +60,7 @@ function App() {
     const result = await supabaseApi.signInWithEmail(email);
     setLoading(false);
     if (result.success) {
+      await setPendingOtp(email);
       setPendingEmail(email);
       setCode("");
     } else {
@@ -61,32 +83,40 @@ function App() {
   async function handleSignOut() {
     setLoading(true);
     await supabaseApi.signOut();
+    await clearHistoryCache();
     setLoading(false);
+  }
+
+  if (initializing) {
+    return (
+      <div className="auth">
+        <h1 className="auth-title">LeetLedger</h1>
+        <p className="auth-subtitle">Loading…</p>
+      </div>
+    );
   }
 
   if (session) {
     return (
-      <>
-        <div>leetledger extension</div>
-        <div>Signed in as {session.user.email ?? session.user.id}</div>
-        <button onClick={handleSignOut} disabled={loading}>
-          Sign out
-        </button>
-      </>
+      <Dashboard
+        session={session}
+        onSignOut={handleSignOut}
+        signingOut={loading}
+      />
     );
   }
 
   if (pendingEmail) {
     return (
-      <>
-        <div>leetledger extension</div>
+      <div className="auth">
+        <h1 className="auth-title">LeetLedger</h1>
         <p>We sent a code to {pendingEmail}</p>
         <form onSubmit={handleVerifyCode}>
           <input
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
-            placeholder="8-digit code"
+            placeholder="6-digit code"
             value={code}
             onChange={(e) => setCode(e.target.value.trim())}
             disabled={loading}
@@ -99,6 +129,7 @@ function App() {
         <button
           type="button"
           onClick={() => {
+            void clearPendingOtp();
             setPendingEmail(null);
             setCode("");
             setError(null);
@@ -107,14 +138,15 @@ function App() {
         >
           Use a different email
         </button>
-        {error && <div role="alert">{error}</div>}
-      </>
+        {error && <div className="auth-error" role="alert">{error}</div>}
+      </div>
     );
   }
 
   return (
-    <>
-      <div>leetledger extension</div>
+    <div className="auth">
+      <h1 className="auth-title">LeetLedger</h1>
+      <p className="auth-subtitle">Sign in to sync your reviews.</p>
       <form onSubmit={handleSendCode}>
         <input
           type="email"
@@ -129,8 +161,8 @@ function App() {
           {loading ? "Sending…" : "Send code"}
         </button>
       </form>
-      {error && <div role="alert">{error}</div>}
-    </>
+      {error && <div className="auth-error" role="alert">{error}</div>}
+    </div>
   );
 }
 
