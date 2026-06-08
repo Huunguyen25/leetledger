@@ -1,5 +1,6 @@
 :root {
   --ll-surface: rgba(255, 255, 255, 0.04);
+  --ll-surface-black: #242424;
   --ll-border: rgba(255, 255, 255, 0.12);
   --ll-accent: #ffa116;
   --ll-muted: #8b8b8b;
@@ -135,31 +136,117 @@
   flex-shrink: 0;
 }
 
-.mute-select {
+.mute-field {
   flex: 1;
   min-width: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.75rem;
   padding: 0.3em 0.45em;
   border-radius: 6px;
   border: 1px solid var(--ll-border);
   background: transparent;
+}
+
+.mute-field:not(.mute-field-open):has(.mute-field-trigger:hover) {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.mute-field-trigger {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mute-field-trigger:hover,
+.mute-field-trigger:focus-visible {
+  border-color: transparent;
+}
+
+.mute-field-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.mute-field-chevron {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--ll-muted);
+  transition: transform 0.15s ease;
+}
+
+.mute-field-open .mute-field-chevron {
+  transform: rotate(180deg);
+}
+
+.mute-field-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  border: 1px solid var(--ll-border);
+  border-radius: 6px;
+  background: #242424;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.mute-field-option {
+  display: block;
+  width: 100%;
+  padding: 0.35em 0.45em;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: inherit;
   font: inherit;
   font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
 }
 
-.mute-status-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.mute-field-option:hover,
+.mute-field-option:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
 }
 
 .mute-unmute {
   flex-shrink: 0;
+  padding: 0.15em 0.45em;
+  border: 1px solid var(--ll-border);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   font-size: 0.75rem;
-  padding: 0.3em 0.5em;
+  line-height: inherit;
+  cursor: pointer;
 }
+
+.mute-unmute:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+
 
 /* -------------------------------- Panels -------------------------------- */
 

@@ -31,6 +31,24 @@ Browser extension (WXT + React) for **leetcode.com**. When you get an **Accepted
 
 make sure extension does not leak storage
 
+**Logic flow from submits to review for**
+Use [Sequence Diagram viewer](https://sequencediagram.org/)
+```
+sequenceDiagram
+  participant FB as fetch-bridge (page)
+  participant CS as content script
+  participant BG as background SW
+  participant ST as storage.local
+
+  FB->>FB: intercept /submit/ + /check/
+  FB->>CS: postMessage (SUCCESS)
+  CS->>BG: SUBMISSION_RESULT
+  BG->>ST: set ll_result:{clientId}:{attemptId}
+  ST->>CS: onChanged
+  CS->>ST: remove(key)
+  CS->>CS: show ReviewForm (maybe)
+```
+
 From this directory:
 
 ```bash
