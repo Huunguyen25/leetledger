@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { browser } from "wxt/browser";
 import constants from "@/constants";
-import { MUTE_DURATIONS, clearMute, getMuteUntil, muteFor } from "@/lib/mute";
+import {
+  MUTE_DURATIONS,
+  clearMute,
+  getMuteUntil,
+  muteFor,
+} from "@/lib/review/mute";
 
 function formatUntil(until: number): string {
   return new Date(until).toLocaleString([], {

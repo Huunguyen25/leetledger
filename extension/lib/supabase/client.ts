@@ -1,16 +1,23 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { extensionStorage } from './extension-storage'
+import {
+  createClient as createSupabaseClient,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
+import { extensionStorage } from "./extension-storage";
 
 const URL = import.meta.env.WXT_SUPABASE_URL;
 const PUB_KEY = import.meta.env.WXT_SUPABASE_PUBLISHABLE_KEY;
-export function createClient() {
+let client: SupabaseClient | null = null;
+
+/** Returns one Supabase client per extension JavaScript context/bundle. */
+export function getSupabaseClient(): SupabaseClient {
+  if (client) return client;
   if (!URL || !PUB_KEY) {
     throw new Error(
       "Missing Supabase config. Set WXT_SUPABASE_URL and " +
         "WXT_SUPABASE_PUBLISHABLE_KEY in the extension's .env file.",
     );
   }
-  return createSupabaseClient(URL, PUB_KEY, {
+  client = createSupabaseClient(URL, PUB_KEY, {
     auth: {
       // Share the session across popup / background / content scripts.
       storage: extensionStorage,
@@ -20,4 +27,5 @@ export function createClient() {
       detectSessionInUrl: false,
     },
   });
+  return client;
 }

@@ -1,28 +1,29 @@
+import { useState } from "react";
 import { IoMdClose } from "react-icons/io";
-import MasterySlider from "../Slider";
-import { SubmissionPayload, TopicTag } from "@/types/submission";
-import { clearHistoryCache } from "@/lib/history-cache";
-import { upsertReview, type AssistanceLevel } from "@/lib/supabase/reviews";
+import MasterySlider from "./MasterySlider";
+import type { SubmissionPayload, TopicTag } from "@/types/submission";
+import { upsertReview } from "@/lib/review/repository";
+import { ASSISTANCE_OPTIONS, type AssistanceLevel } from "@/lib/assistance/types";
 import "./style.css";
+
 interface ReviewFormProps {
   /** Submission payload (problem slug, difficulty badge, etc.). */
   submissionData: SubmissionPayload;
   onCancel: () => void;
+  /** Auto-detected assistance, used to pre-select the dropdown (overridable). */
+  detectedAssistance?: AssistanceLevel;
+  /** Called once the review is successfully saved (used to reset detection). */
+  onSubmitted?: () => void;
 }
-interface UserReviewData {
-  difficulty: number;
-  assistanceLevel: AssistanceLevel;
-  notes: string;
-  timeSpentMinutes?: number;
-  topicTags: TopicTag[];
-}
-// value = DB enum (matches the CHECK constraint), label = what the user sees.
-const ASSISTANCE_LEVELS = [
-  { value: "NONE", label: "None" },
-  { value: "LOGIC_PEEK", label: "Logic Peek" },
-  { value: "SOLUTION_COPIED", label: "Solution Copied" },
-] as const;
-const COMPLEXITY_OPTIONS = ["O(1)", "O(log n)","O(n)", "O(n log n)", "O(n^2)", "O(2^n)"];
+
+const COMPLEXITY_OPTIONS = [
+  "O(1)",
+  "O(log n)",
+  "O(n)",
+  "O(n log n)",
+  "O(n^2)",
+  "O(2^n)",
+];
 
 function titleFromSlug(slug: string | undefined): string {
   if (!slug) return "";
@@ -32,9 +33,16 @@ function titleFromSlug(slug: string | undefined): string {
     .join(" ");
 }
 
-export default function ReviewForm({submissionData, onCancel}: ReviewFormProps) {
+export default function ReviewForm({
+  submissionData,
+  onCancel,
+  detectedAssistance,
+  onSubmitted,
+}: ReviewFormProps) {
   const [masteryLevel, setMasteryLevel] = useState(1);
-  const [assistanceLevel, setAssistanceLevel] = useState<AssistanceLevel>("NONE");
+  const [assistanceLevel, setAssistanceLevel] = useState<AssistanceLevel>(
+    detectedAssistance ?? "NONE",
+  );
 
   const [timeComplexity, setTimeComplexity] = useState<string>("O(1)");
   const [spaceComplexity, setSpaceComplexity] = useState<string>("O(1)");
@@ -45,12 +53,14 @@ export default function ReviewForm({submissionData, onCancel}: ReviewFormProps) 
   // Topic tags arrive prefilled from LeetCode's GraphQL response and stay
   // read-only for now — the combobox UI lands in a follow-up.
   const [topicTags] = useState<TopicTag[]>(submissionData?.topicTags ?? []);
-
-
-  const handleTimeComplexityChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleTimeComplexityChange = (
+    event: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
     setTimeComplexity(event.target.value);
   };
-  const handleSpaceComplexityChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleSpaceComplexityChange = (
+    event: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
     setSpaceComplexity(event.target.value);
   };
   const handleMasteryLevelChange = (value: number) => {
@@ -59,9 +69,7 @@ export default function ReviewForm({submissionData, onCancel}: ReviewFormProps) 
   const handleAssistanceLevelChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
-    setAssistanceLevel(
-      event.target.value as UserReviewData["assistanceLevel"],
-    );
+    setAssistanceLevel(event.target.value as AssistanceLevel);
   };
   const [notes, setNotes] = useState("");
   const handleNotesChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -90,34 +98,35 @@ export default function ReviewForm({submissionData, onCancel}: ReviewFormProps) 
 
     setSubmitting(false);
     if (result.success) {
-      void clearHistoryCache();
+      onSubmitted?.();
       onCancel();
     } else {
       setSubmitError(result.error);
     }
   };
-
-
   return (
     <div className="review-drawer">
       <IoMdClose className="close-icon" onClick={() => onCancel()} />
       <div className="problem-header">
         <div className="badge-container">
-          <div className="difficulty-badge" data-difficulty={submissionData?.difficulty?.toLowerCase()}>
+          <div
+            className="difficulty-badge"
+            data-difficulty={submissionData.difficulty.toLowerCase()}
+          >
             <p>{submissionData?.difficulty}</p>
           </div>
         </div>
         <div className="problem-info">
-        <h2>
-          {submissionData?.questionId ? `${submissionData?.questionId}. ` : ""}
-          {titleFromSlug(submissionData?.problemSlug)}
-        </h2>
+          <h2>
+            {submissionData.questionId ? `${submissionData.questionId}. ` : ""}
+            {titleFromSlug(submissionData.problemSlug)}
+          </h2>
         </div>
       </div>
       <div className="complexity-metrics">
         <div className="complexity-wrapper">
           <div className="time-options">
-          <p>Time Complexity: </p>
+            <p>Time Complexity: </p>
             <select value={timeComplexity} onChange={handleTimeComplexityChange}>
               {COMPLEXITY_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -146,13 +155,18 @@ export default function ReviewForm({submissionData, onCancel}: ReviewFormProps) 
         />
       </div>
       <div className="assistance-level">
-        <p>Assistance Level</p>
+        <p>
+          Assistance Level
+          {detectedAssistance && detectedAssistance !== "NONE" && (
+            <span className="assistance-detected"> (auto-detected)</span>
+          )}
+        </p>
         <select value={assistanceLevel} onChange={handleAssistanceLevelChange}>
-        {ASSISTANCE_LEVELS.map((level) => (
-          <option key={level.value} value={level.value}>
-            {level.label}
-          </option>
-        ))}
+          {ASSISTANCE_OPTIONS.map((level) => (
+            <option key={level.value} value={level.value}>
+              {level.label}
+            </option>
+          ))}
         </select>
       </div>
       <div className="topic-tags">
@@ -168,13 +182,21 @@ export default function ReviewForm({submissionData, onCancel}: ReviewFormProps) 
             ))}
           </div>
         )}
-   
       </div>
       <div className="notes-textarea">
         <p>Notes</p>
-        <textarea value={notes} onChange={handleNotesChange} placeholder="What was the approach you took to solve the problem?" wrap="hard"/>
+        <textarea
+          value={notes}
+          onChange={handleNotesChange}
+          placeholder="What was the approach you took to solve the problem?"
+          wrap="hard"
+        />
       </div>
-      {submitError && <p className="submit-error" role="alert">{submitError}</p>}
+      {submitError && (
+        <p className="submit-error" role="alert">
+          {submitError}
+        </p>
+      )}
       <button onClick={handleSubmit} disabled={submitting}>
         {submitting ? "Saving…" : "Submit"}
       </button>

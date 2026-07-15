@@ -18,7 +18,15 @@
  */
 
 import constants from "@/constants";
-import { parseProblemSlugFromPathname } from "@/lib/problem-slug";
+import {
+  classifyAssistanceRequest,
+  extractOperationName,
+} from "@/lib/assistance/network";
+import {
+  extractSubmissionId,
+  isValidSubmissionId,
+  parseProblemSlugFromPathname,
+} from "@/lib/leetcode/routes";
 import type { TopicTag } from "@/types/submission";
 
 interface PendingCodeInfo {
@@ -132,9 +140,33 @@ export default defineUnlistedScript(() => {
     return Promise.race([metadata, timeout]);
   }
 
+  function reportAssistanceSignal(url: string, init: RequestInit | undefined) {
+    try {
+      const operationName = extractOperationName(init?.body);
+      const level = classifyAssistanceRequest(url, operationName);
+      if (!level) return;
+      window.postMessage(
+        {
+          type: constants.MESSAGE_TYPES.ASSISTANCE_SIGNAL,
+          token,
+          clientId,
+          level,
+          problemSlug: parseProblemSlugFromPathname(window.location.pathname),
+          timestamp: Date.now(),
+        },
+        window.location.origin,
+      );
+    } catch (_err) {
+    }
+  }
+
   window.fetch = async function (...args) {
     const response = await originalFetch.apply(this, args);
     const url = typeof args[0] === "string" ? args[0] : (args[0] as Request)?.url || "";
+
+    // Passively classify assistance-bearing requests (editorial/solution reads,
+    // Ask Leet). Best-effort and non-blocking; dedup happens in the content script.
+    reportAssistanceSignal(url, args[1] as RequestInit | undefined);
 
     // Intercept the submit POST to capture typed code before the check fires
     if (url.includes("/submit/")) {
@@ -181,10 +213,9 @@ export default defineUnlistedScript(() => {
         clone.json().then(async (data) => {
           if (data.state !== "SUCCESS") return;
 
-          const requestURLsubmissionID = url.match(constants.SUBMISSION_ID_EXTRACT_REGEX);
-          const submissionId = requestURLsubmissionID ? requestURLsubmissionID[1] : null;
+          const submissionId = extractSubmissionId(url);
           // skip test runs and run code or invalid submission ids
-          if (!submissionId || !constants.VALID_SUBMISSION_ID_REGEX.test(submissionId)) return;
+          if (!submissionId || !isValidSubmissionId(submissionId)) return;
 
           const codeInfo = pendingSubmissions.get(submissionId);
           pendingSubmissions.delete(submissionId);

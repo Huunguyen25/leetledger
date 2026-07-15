@@ -1,14 +1,19 @@
 import "./App.css";
-import supabaseApi from "@/lib/supabase/supabase-object";
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import Dashboard from "./components/Dashboard";
-import { clearHistoryCache } from "@/lib/history-cache";
+import { clearHistoryCache } from "@/lib/review/cache";
+import {
+  signInWithEmail,
+  signOut,
+  supabaseAuth,
+  verifyEmailOtp,
+} from "@/lib/supabase/auth";
 import {
   clearPendingOtp,
   getPendingOtp,
   setPendingOtp,
-} from "@/lib/pending-otp";
+} from "./auth/pending-otp";
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -23,7 +28,7 @@ function App() {
 
   useEffect(() => {
     Promise.all([
-      supabaseApi.client.auth.getSession(),
+      supabaseAuth.getSession(),
       getPendingOtp(),
     ])
       .then(([{ data }, pending]) => {
@@ -33,7 +38,7 @@ function App() {
       })
       .finally(() => setInitializing(false));
 
-    const { data: sub } = supabaseApi.client.auth.onAuthStateChange(
+    const { data: sub } = supabaseAuth.onAuthStateChange(
       (_event, nextSession) => {
         setSession(nextSession);
         if (nextSession) {
@@ -57,7 +62,7 @@ function App() {
     if (!email || loading) return;
     setLoading(true);
     setError(null);
-    const result = await supabaseApi.signInWithEmail(email);
+    const result = await signInWithEmail(email);
     setLoading(false);
     if (result.success) {
       await setPendingOtp(email);
@@ -73,7 +78,7 @@ function App() {
     if (!pendingEmail || !code || loading) return;
     setLoading(true);
     setError(null);
-    const result = await supabaseApi.verifyEmailOtp(pendingEmail, code);
+    const result = await verifyEmailOtp(pendingEmail, code);
     setLoading(false);
     if (!result.success) {
       setError(result.error?.message ?? "Invalid or expired code");
@@ -82,7 +87,7 @@ function App() {
 
   async function handleSignOut() {
     setLoading(true);
-    await supabaseApi.signOut();
+    await signOut();
     await clearHistoryCache();
     setLoading(false);
   }

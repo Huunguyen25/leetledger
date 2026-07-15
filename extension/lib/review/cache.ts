@@ -1,16 +1,8 @@
 import { browser } from "wxt/browser";
 import constants from "@/constants";
-import type { SolvedReview } from "@/lib/supabase/reviews";
+import type { SolvedReview } from "./types";
 
-/**
- * Solved-history cache for the popup.
- *
- * Persists up to 25 lightweight review rows in browser.storage.local so reopening
- * the popup can render tabs instantly. A single key keeps footprint tiny; the
- * payload is guarded by userId to prevent cross-account bleed.
- */
-
-/** How long cached history is considered fresh before a background refresh. */
+/** How long solved history is fresh before stale-while-revalidate refreshes it. */
 export const HISTORY_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const MAX_CACHED_REVIEWS = 25;
@@ -23,11 +15,11 @@ interface HistoryCache {
 
 function isHistoryCache(value: unknown): value is HistoryCache {
   if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
+  const candidate = value as Record<string, unknown>;
   return (
-    typeof v.userId === "string" &&
-    typeof v.fetchedAt === "number" &&
-    Array.isArray(v.reviews)
+    typeof candidate.userId === "string" &&
+    typeof candidate.fetchedAt === "number" &&
+    Array.isArray(candidate.reviews)
   );
 }
 
@@ -35,7 +27,7 @@ function isExpired(fetchedAt: number): boolean {
   return Date.now() - fetchedAt > HISTORY_CACHE_TTL_MS;
 }
 
-/** Returns cached reviews for `userId`, or null if missing/stale/wrong user. */
+/** Returns cached reviews for a user, including stale rows for revalidation. */
 export async function getHistoryCache(
   userId: string,
 ): Promise<{ reviews: SolvedReview[]; fresh: boolean } | null> {
@@ -48,15 +40,13 @@ export async function getHistoryCache(
     return null;
   }
 
-  if (isExpired(cache.fetchedAt)) {
-    // Stale but still usable for stale-while-revalidate; caller may show then refresh.
-    return { reviews: cache.reviews, fresh: false };
-  }
-
-  return { reviews: cache.reviews, fresh: true };
+  return {
+    reviews: cache.reviews,
+    fresh: !isExpired(cache.fetchedAt),
+  };
 }
 
-/** Writes review history for `userId` (capped at 25 rows). */
+/** Writes the newest solved reviews for a user. */
 export async function setHistoryCache(
   userId: string,
   reviews: SolvedReview[],
@@ -69,7 +59,6 @@ export async function setHistoryCache(
   await browser.storage.local.set({ [constants.HISTORY_CACHE_KEY]: cache });
 }
 
-/** Removes any persisted history cache. */
 export async function clearHistoryCache(): Promise<void> {
   await browser.storage.local.remove(constants.HISTORY_CACHE_KEY);
 }

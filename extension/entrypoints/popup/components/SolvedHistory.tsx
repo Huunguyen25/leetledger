@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   listReviewsCached,
   type SolvedReview,
-} from "@/lib/supabase/reviews";
+} from "@/lib/review/repository";
 
 interface SolvedHistoryProps {
   userId: string;

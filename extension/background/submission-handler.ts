@@ -1,7 +1,6 @@
-import {
-  createSubmissionTracker,
-  isValidSubmissionId,
-} from "@/background/background.logic";
+import { createSubmissionTracker } from "@/background/submission-tracker";
+import { getActiveIdentity } from "@/background/identity-store";
+import { isValidSubmissionId } from "@/lib/leetcode/routes";
 import type {
   SubmissionPayload,
   SubmissionStorageValue,
@@ -59,6 +58,12 @@ function normalizeSubmissionData(
 export function registerSubmissionHandler(tracker: SubmissionTracker) {
   browser.runtime.onMessage.addListener((message) => {
     if (message.type !== constants.MESSAGE_TYPES.SUBMISSION_RESULT) return;
+
+    if (!getActiveIdentity()) {
+      console.warn("⚠️ Ignoring SUBMISSION_RESULT: identity not active");
+      return;
+    }
+
     const { submissionData, problemSlug, clientId, attemptId, difficulty, typedCode, lang, topicTags } = message;
 
     if (!clientId || !attemptId) {

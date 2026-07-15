@@ -1,0 +1,117 @@
+.auth-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  max-width: 450px;
+  background: #ffffff;
+  border-radius: 7px;
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow: hidden;
+}
+
+.auth-toast-row {
+  display: flex;
+  align-items: center;
+}
+
+.auth-toast-accent {
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 8px;
+  background: #f5b81f;
+}
+
+.auth-toast-icon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  margin-left: 10px;
+  color: #f5b81f;
+}
+
+.auth-toast-content {
+  flex: 1;
+  min-width: 0;
+  padding: 10px;
+}
+
+.auth-toast-title {
+  margin: 0 0 3px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #16181f;
+}
+
+.auth-toast-message {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.auth-toast-close {
+  flex-shrink: 0;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin: 8px 8px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #a1a1aa;
+  cursor: pointer;
+}
+
+.auth-toast-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #52525b;
+}
+
+.auth-toast-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.auth-toast-timer {
+  height: 4px;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.auth-toast-timer-bar {
+  height: 100%;
+  width: 100%;
+  background: #f5b81f;
+  transform-origin: left center;
+  animation-name: auth-toast-timer-deplete;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes auth-toast-timer-deplete {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-toast-timer-bar {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
