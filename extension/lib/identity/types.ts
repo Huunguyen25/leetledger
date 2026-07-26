@@ -1,25 +1,10 @@
-/** Canonical identity states persisted by the background store. */
-export type IdentityState = "inactive" | "active" | "account_changed";
+import type { IdentityFailureReason } from "@/types/identity";
 
 /** Fully resolved credentials when both LeetCode and extension auth are present. */
 export interface ResolvedIdentity {
   leetcodeUsername: string;
   supabaseUid: string;
 }
-
-/** Snapshot written to browser.storage.local under ll_active_identity. */
-export interface IdentitySnapshot {
-  state: IdentityState;
-  leetcodeUsername: string | null;
-  supabaseUid: string | null;
-  updatedAt: number;
-}
-
-/** Why identity resolution failed (when not fully active). */
-export type IdentityFailureReason =
-  | "leetcode_signed_out"
-  | "extension_signed_out"
-  | "network_error";
 
 export interface IdentityResolveSuccess {
   ok: true;

@@ -18,7 +18,7 @@ const constants = {
    * Storage key holding the email awaiting OTP verification (with an expiry).
    * Lets the popup restore the 6-digit verify form after it is closed and
    * reopened, instead of forcing a fresh email entry / wasted resend.
-   * See `entrypoints/popup/auth/pending-otp.ts`.
+   * See `lib/supabase/pending-otp.ts`.
    */
   PENDING_OTP_KEY: "ll_pending_otp",
   /**

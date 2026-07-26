@@ -2,6 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import constants from "@/constants";
 import MuteControl from "./MuteControl";
 import SolvedHistory from "./SolvedHistory";
+import "./Dashboard.css";
 
 interface DashboardProps {
   session: Session;

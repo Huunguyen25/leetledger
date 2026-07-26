@@ -1,9 +1,7 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
+import type { IdentityFailureReason } from "@/types/identity";
 import { fetchLeetCodeUsername } from "./leetcode-user";
-import type {
-  IdentityFailureReason,
-  IdentityResolveResult,
-} from "./types";
+import type { IdentityResolveResult } from "./types";
 
 export async function resolveIdentity(): Promise<IdentityResolveResult> {
   const supabase = getSupabaseClient();

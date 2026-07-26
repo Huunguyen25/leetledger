@@ -1,4 +1,4 @@
-import type { IdentityFailureReason } from "./types";
+import type { IdentityFailureReason } from "@/types/identity";
 
 /** Reasons that warrant surfacing the auth toast (network-only failures are transient). */
 const TOAST_WORTHY_REASONS: IdentityFailureReason[] = [

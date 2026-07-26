@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { IoIosAlert, IoMdClose } from "react-icons/io";
-import "./style.css";
+import "./AuthToast.css";
 
 interface AuthToastProps {
   message: string;

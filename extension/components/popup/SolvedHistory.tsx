@@ -3,6 +3,7 @@ import {
   listReviewsCached,
   type SolvedReview,
 } from "@/lib/review/repository";
+import "./SolvedHistory.css";
 
 interface SolvedHistoryProps {
   userId: string;
@@ -144,7 +145,7 @@ export default function SolvedHistory({ userId }: SolvedHistoryProps) {
                 className={`history-tab${index === activeIndex ? " active" : ""}`}
                 aria-selected={index === activeIndex}
                 onClick={() => setActiveIndex(index)}
-                onKeyDown={(e) => handleTabKeyDown(e, index)}
+                onKeyDown={(event) => handleTabKeyDown(event, index)}
               >
                 <span
                   className="history-tab-dot"

@@ -1,5 +1,5 @@
-import "@/components/ReviewDrawer/style.css";
-import "@/components/AuthToast/style.css";
+import "@/components/page/ReviewDrawer/ReviewDrawer.css";
+import "@/components/page/AuthToast/AuthToast.css";
 import { startIdentityController } from "@/content/identity-controller";
 
 export default defineContentScript({

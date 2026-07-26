@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { IoMdClose } from "react-icons/io";
-import MasterySlider from "./MasterySlider";
+import Slider from "./Slider";
 import type { SubmissionPayload, TopicTag } from "@/types/submission";
 import { upsertReview } from "@/lib/review/repository";
-import { ASSISTANCE_OPTIONS, type AssistanceLevel } from "@/lib/assistance/types";
-import "./style.css";
+import {
+  ASSISTANCE_OPTIONS,
+  type AssistanceLevel,
+} from "@/lib/assistance/types";
+import "./ReviewDrawer.css";
 
 interface ReviewFormProps {
   /** Submission payload (problem slug, difficulty badge, etc.). */
@@ -104,6 +107,7 @@ export default function ReviewForm({
       setSubmitError(result.error);
     }
   };
+
   return (
     <div className="review-drawer">
       <IoMdClose className="close-icon" onClick={() => onCancel()} />
@@ -113,7 +117,7 @@ export default function ReviewForm({
             className="difficulty-badge"
             data-difficulty={submissionData.difficulty.toLowerCase()}
           >
-            <p>{submissionData?.difficulty}</p>
+            <p>{submissionData.difficulty}</p>
           </div>
         </div>
         <div className="problem-info">
@@ -137,7 +141,10 @@ export default function ReviewForm({
           </div>
           <div className="space-options">
             <p>Space Complexity: </p>
-            <select value={spaceComplexity} onChange={handleSpaceComplexityChange}>
+            <select
+              value={spaceComplexity}
+              onChange={handleSpaceComplexityChange}
+            >
               {COMPLEXITY_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {option.toUpperCase()}
@@ -149,7 +156,7 @@ export default function ReviewForm({
       </div>
       <div className="mastery-slider">
         <p>Mastery Level:</p>
-        <MasterySlider
+        <Slider
           value={masteryLevel}
           onChange={handleMasteryLevelChange}
         />
@@ -161,7 +168,10 @@ export default function ReviewForm({
             <span className="assistance-detected"> (auto-detected)</span>
           )}
         </p>
-        <select value={assistanceLevel} onChange={handleAssistanceLevelChange}>
+        <select
+          value={assistanceLevel}
+          onChange={handleAssistanceLevelChange}
+        >
           {ASSISTANCE_OPTIONS.map((level) => (
             <option key={level.value} value={level.value}>
               {level.label}

@@ -1,6 +1,10 @@
 import constants from "@/constants";
-import type { IdentityReportMessage, IdentityReportResponse } from "@/lib/identity/messages";
-import type { IdentitySnapshot, IdentityState } from "@/lib/identity/types";
+import type {
+  IdentityReportMessage,
+  IdentityReportResponse,
+  IdentitySnapshot,
+  IdentityState,
+} from "@/types/identity";
 import type { createSubmissionTracker } from "./submission-tracker";
 
 type SubmissionTracker = ReturnType<typeof createSubmissionTracker>;

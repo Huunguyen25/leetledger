@@ -2,7 +2,7 @@ import ReactDOM from "react-dom/client";
 import { browser } from "wxt/browser";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import type { ContentScriptContext } from "wxt/utils/content-script-context";
-import AuthToast from "@/components/AuthToast/AuthToast";
+import AuthToast from "@/components/page/AuthToast/AuthToast";
 import constants from "@/constants";
 import {
   ACCOUNT_CHANGED_KEY,
@@ -10,9 +10,11 @@ import {
   authToastKey,
   authToastMessage,
 } from "@/lib/identity/auth-messages";
-import type { IdentityReportResponse } from "@/lib/identity/messages";
 import { resolveIdentity } from "@/lib/identity/resolve";
-import type { IdentityFailureReason } from "@/lib/identity/types";
+import type {
+  IdentityFailureReason,
+  IdentityReportResponse,
+} from "@/types/identity";
 import { startContentTracking } from "./tracking-controller";
 
 const AUTH_TOAST_DURATION_MS = 15_000;

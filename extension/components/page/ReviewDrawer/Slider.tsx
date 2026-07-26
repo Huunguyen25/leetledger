@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
+import "./Slider.css";
 
-interface MasterySliderProps {
+interface SliderProps {
   value: number;
   onChange: (value: number) => void;
   min?: number;
@@ -8,13 +9,13 @@ interface MasterySliderProps {
   step?: number;
 }
 
-export default function MasterySlider({
+export default function Slider({
   value,
   onChange,
   min = 1,
   max = 10,
   step = 1,
-}: MasterySliderProps) {
+}: SliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const marks = Array.from(
     { length: (max - min) / step + 1 },

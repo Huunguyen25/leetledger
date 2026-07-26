@@ -1,0 +1,72 @@
+/* LeetLedger content script styles */
+:root {
+  --review-drawer-width: 300px;
+  --review-drawer-height: 100vh;
+}
+
+.difficulty-badge[data-difficulty="easy"] {
+  --difficulty-badge-color: var(--difficulty-easy);
+}
+
+.difficulty-badge[data-difficulty="medium"] {
+  --difficulty-badge-color: var(--difficulty-medium);
+}
+
+.difficulty-badge[data-difficulty="hard"] {
+  --difficulty-badge-color: var(--difficulty-hard);
+}
+
+/* Review drawer container (matches the div from ReviewForm.tsx) */
+.review-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--review-drawer-width);
+  height: var(--review-drawer-height);
+  background: white;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  z-index: 2147483647;
+  padding: 24px;
+}
+
+.review-drawer h2 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 0;
+}
+
+.problem-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+.problem-header h2 {
+  margin: 0;
+  margin-bottom: 0.5rem;
+}
+
+.difficulty-badge {
+  display: inline-block;
+  border-radius: 5px;
+  padding: 3px;
+  background-color: var(--difficulty-badge-color);
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: capitalize;
+  color: white;
+  min-width: 35px;
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+}
+
+.notes-textarea textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 100%;
+}

@@ -2,7 +2,7 @@ import ReactDOM from "react-dom/client";
 import { browser } from "wxt/browser";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import type { ContentScriptContext } from "wxt/utils/content-script-context";
-import ReviewForm from "@/components/ReviewDrawer/ReviewForm";
+import ReviewForm from "@/components/page/ReviewDrawer/ReviewForm";
 import constants from "@/constants";
 import { setupAssistanceDetectors } from "@/lib/assistance/detectors";
 import { createAssistanceSession } from "@/lib/assistance/session";
@@ -15,17 +15,11 @@ import {
   parseProblemSlugFromPathname,
 } from "@/lib/leetcode/routes";
 import { isMuted } from "@/lib/review/mute";
+import type { AssistanceSignalMessage } from "@/types/assistance";
 import type {
   SubmissionInterceptedMessage,
   SubmissionStorageValue,
 } from "@/types/submission";
-
-interface AssistanceSignalMessage {
-  type: string;
-  token: string;
-  level: AssistanceLevel;
-  problemSlug: string | null;
-}
 
 export interface TrackingControls {
   teardown: () => void;

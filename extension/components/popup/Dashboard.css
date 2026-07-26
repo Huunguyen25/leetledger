@@ -1,0 +1,58 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.brand-name {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.brand-email {
+  font-size: 0.78rem;
+  color: var(--ll-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.action-btn {
+  font-size: 0.75rem;
+  padding: 0.35em 0.55em;
+  white-space: nowrap;
+}
+
+.action-btn:first-child {
+  background: var(--ll-accent);
+  color: #1a1a1a;
+  font-weight: 600;
+  border: none;
+}
+
+.action-btn:first-child:hover {
+  filter: brightness(1.05);
+  border: none;
+}

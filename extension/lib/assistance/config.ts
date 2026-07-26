@@ -1,3 +1,5 @@
+import type { AssistanceLevel } from "@/types/assistance";
+
 /**
  * Single tweak point for assistance levels, labels, SRS weights, and detection.
  *
@@ -16,8 +18,6 @@ export const ASSISTANCE_SRS_WEIGHTS = {
   SOLUTION_PEEK: 4,
   SOLUTION_COPIED: 1,
 } as const;
-
-export type AssistanceLevel = keyof typeof ASSISTANCE_SRS_WEIGHTS;
 
 /**
  * Effective mastery for SRS spacing: slider value capped by assistance tier.

@@ -1,7 +1,6 @@
-import "./App.css";
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import Dashboard from "./components/Dashboard";
+import Dashboard from "@/components/popup/Dashboard";
 import { clearHistoryCache } from "@/lib/review/cache";
 import {
   signInWithEmail,
@@ -13,7 +12,7 @@ import {
   clearPendingOtp,
   getPendingOtp,
   setPendingOtp,
-} from "./auth/pending-otp";
+} from "@/lib/supabase/pending-otp";
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);

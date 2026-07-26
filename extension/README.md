@@ -14,12 +14,14 @@ Browser extension (WXT + React) for **leetcode.com**. When you get an **Accepted
 - `entrypoints/` contains thin WXT bootstraps for each extension runtime.
 - `content/` contains content-script controllers for identity and submission tracking.
 - `background/` contains service-worker identity and submission handlers.
-- `components/` contains the on-page React UI.
+- `components/page/` contains React UI injected into LeetCode pages.
+- `components/popup/` contains popup-only React UI.
 - `lib/assistance/` owns assistance detection and attempt lifecycle rules.
-- `lib/leetcode/` owns shared LeetCode route parsing.
+- `lib/leetcode/` owns route parsing and the page-world fetch bridge.
 - `lib/review/` owns review persistence, caching, and mute state.
-- `lib/identity/` owns cross-context identity types and resolution.
+- `lib/identity/` owns identity resolution and user-facing auth state.
 - `lib/supabase/` contains the shared client, auth API, and browser storage adapter.
+- `types/` contains serialized message and storage contracts shared by runtimes.
 
 Runtime flow:
 
@@ -38,7 +40,7 @@ fetch bridge → content controller → background worker → storage
 - [x] Replace raw “difficulty” with a **mastery** level (user-rated scale)
 - [x] Time & space complexity
 - [x] Solved date
-- [ ] **[*future fix if needed*]** lift fetchProblemMetadata to a standalone module to fetch topics and difficulties before submission.
+- [x] Lift fetch interception and problem metadata loading into `lib/leetcode/bridge.ts`.
 - [ ] fancy form up
 - [ ] additional topic tags
 - [ ] add star feature to a favorite a problem.

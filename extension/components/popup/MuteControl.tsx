@@ -7,6 +7,7 @@ import {
   getMuteUntil,
   muteFor,
 } from "@/lib/review/mute";
+import "./MuteControl.css";
 
 function formatUntil(until: number): string {
   return new Date(until).toLocaleString([], {

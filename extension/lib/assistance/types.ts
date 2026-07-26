@@ -1,7 +1,7 @@
+import type { AssistanceLevel } from "@/types/assistance";
 import {
   ASSISTANCE_OPTIONS,
   AUTO_DETECT_PRECEDENCE,
-  type AssistanceLevel,
 } from "./config";
 
 export type { AssistanceLevel };
