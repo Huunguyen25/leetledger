@@ -16,10 +16,12 @@ import {
 } from "@/lib/leetcode/routes";
 import { isMuted } from "@/lib/review/mute";
 import type { AssistanceSignalMessage } from "@/types/assistance";
+import type { CodeMilestoneMessage } from "@/types/evolution";
 import type {
   SubmissionInterceptedMessage,
   SubmissionStorageValue,
 } from "@/types/submission";
+import { startEvolutionTracking } from "./evolution-controller";
 
 export interface TrackingControls {
   teardown: () => void;
@@ -52,6 +54,20 @@ function isSubmissionInterceptedMessage(
     message.token === expectedToken &&
     typeof message.clientId === "string" &&
     typeof message.attemptId === "string"
+  );
+}
+
+function isCodeMilestoneMessage(
+  data: unknown,
+  expectedToken: string,
+): data is CodeMilestoneMessage {
+  if (!data || typeof data !== "object") return false;
+  const message = data as Record<string, unknown>;
+  return (
+    message.type === constants.MESSAGE_TYPES.CODE_MILESTONE &&
+    message.token === expectedToken &&
+    typeof message.code === "string" &&
+    (message.source === "run" || message.source === "submit")
   );
 }
 
@@ -89,6 +105,7 @@ export function startContentTracking(
   let boundProblemSlug: string | null = null;
 
   const assistanceSession = createAssistanceSession();
+  const evolution = startEvolutionTracking();
 
   function teardownReviewForm() {
     reviewFormUi?.remove();
@@ -100,6 +117,7 @@ export function startContentTracking(
 
   const onNavigate = () => {
     assistanceSession.handleNavigation(window.location.pathname);
+    evolution.onNavigate();
     if (
       boundProblemSlug &&
       shouldTeardownReviewForm(window.location.pathname, boundProblemSlug)
@@ -115,6 +133,11 @@ export function startContentTracking(
 
     if (isAssistanceSignalMessage(event.data, token)) {
       assistanceSession.record(event.data.level, event.data.problemSlug);
+      return;
+    }
+
+    if (isCodeMilestoneMessage(event.data, token)) {
+      evolution.recordMilestone(event.data);
       return;
     }
 
@@ -151,6 +174,16 @@ export function startContentTracking(
       void browser.storage.local.remove(key);
 
       if (payload.data.status !== "Accepted") continue;
+
+      // Archiving the code timeline is independent of the review UI, so it must
+      // happen even while the review drawer is muted.
+      evolution.recordAcceptedSubmission({
+        problemSlug: payload.data.problemSlug,
+        submissionId: key.split(":").pop() ?? "",
+        code: payload.data.code ?? null,
+        language: payload.data.lang ?? null,
+      });
+
       if (await isMuted()) continue;
       if (reactRoot !== null || mountingReviewForm) continue;
 
@@ -206,6 +239,7 @@ export function startContentTracking(
       window.removeEventListener("message", onMessage);
       browser.storage.local.onChanged.removeListener(onStorageChanged);
       detectorControls.teardown();
+      evolution.teardown();
       teardownReviewForm();
     },
   };

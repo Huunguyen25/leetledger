@@ -15,6 +15,7 @@ import {
   parseProblemSlugFromPathname,
 } from "@/lib/leetcode/routes";
 import type { AssistanceSignalMessage } from "@/types/assistance";
+import type { CodeMilestoneMessage } from "@/types/evolution";
 import type {
   SubmissionInterceptedMessage,
   TopicTag,
@@ -184,6 +185,30 @@ export function installFetchBridge({
     }
   }
 
+  /**
+   * Reports the exact code LeetCode was asked to execute. This is stronger
+   * evidence than an autosaved draft, so the timeline records it even when the
+   * autosave poll would have skipped the change.
+   */
+  function reportCodeMilestone(
+    source: "run" | "submit",
+    typedCode: string,
+    lang: string | null,
+    titleSlug: string | null,
+  ) {
+    const message: CodeMilestoneMessage = {
+      type: constants.MESSAGE_TYPES.CODE_MILESTONE,
+      token,
+      clientId,
+      source,
+      code: typedCode,
+      language: lang,
+      problemSlug: titleSlug,
+      timestamp: Date.now(),
+    };
+    window.postMessage(message, window.location.origin);
+  }
+
   const bridgeFetch: typeof window.fetch = async function (...args) {
     const response = await originalFetch(...args);
     const url =
@@ -194,6 +219,28 @@ export function installFetchBridge({
     // Passively classify assistance-bearing requests. Deduplication happens in
     // the content script.
     reportAssistanceSignal(url, args[1] as RequestInit | undefined);
+
+    if (url.includes("/interpret_solution/")) {
+      try {
+        const init = args[1] as RequestInit | undefined;
+        const body = init?.body
+          ? (JSON.parse(init.body as string) as {
+              typed_code?: string;
+              lang?: string;
+            })
+          : null;
+        if (body?.typed_code) {
+          reportCodeMilestone(
+            "run",
+            body.typed_code,
+            body.lang ?? null,
+            parseProblemSlugFromPathname(window.location.pathname),
+          );
+        }
+      } catch {
+        // Run capture is best-effort and must not alter LeetCode fetches.
+      }
+    }
 
     if (url.includes("/submit/")) {
       try {
@@ -210,6 +257,7 @@ export function installFetchBridge({
             );
 
             if (titleSlug) void metadata.fetch(titleSlug);
+            reportCodeMilestone("submit", typedCode, lang ?? null, titleSlug);
 
             const clone = response.clone();
             void clone

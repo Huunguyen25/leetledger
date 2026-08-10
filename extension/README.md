@@ -9,6 +9,8 @@ Browser extension (WXT + React) for **leetcode.com**. When you get an **Accepted
 - **Background** — Validates and deduplicates submissions, then coordinates extension storage.
 - **Popup** — Small dashboard for recent activity and review reminders.
 
+
+
 ## Code organization
 
 - `entrypoints/` contains thin WXT bootstraps for each extension runtime.
@@ -17,7 +19,9 @@ Browser extension (WXT + React) for **leetcode.com**. When you get an **Accepted
 - `components/page/` contains React UI injected into LeetCode pages.
 - `components/popup/` contains popup-only React UI.
 - `lib/assistance/` owns assistance detection and attempt lifecycle rules.
-- `lib/leetcode/` owns route parsing and the page-world fetch bridge.
+- `lib/evolution/` owns the code-evolution timeline: patches, IndexedDB, archives.
+- `lib/leetcode/` owns route parsing, the page-world fetch bridge, and the
+read-only reader for LeetCode's own editor database.
 - `lib/review/` owns review persistence, caching, and mute state.
 - `lib/identity/` owns identity resolution and user-facing auth state.
 - `lib/supabase/` contains the shared client, auth API, and browser storage adapter.
@@ -30,6 +34,8 @@ fetch bridge → content controller → background worker → storage
                     ↓                              ↓
              assistance session             review drawer
 ```
+
+
 
 ## Todo
 
@@ -57,10 +63,20 @@ fetch bridge → content controller → background worker → storage
 - [ ] pass the current session to the dashboard
 - [x] solved history
 
-**New features**
+**Related features**
 
-- [ ] popup will have a button to manually add the review
-- [ ] manually add button will retrieve leet problem as well.
+- [ ] 1) **Manual add review** = popup button that opens a review **and** auto-fills the LeetCode problem (title, number, topics, etc.) so you’re not starting from a blank form.
+- [ ] 2) notification for next solve date (add in backend?)
+
+**Code evolution timeline** (see `.cursor/code-evolution-timeline-architecture.md`)
+
+- [x] patch/checkpoint timeline logic with Google diff-match-patch
+- [x] `LeetLedgerLocal` IndexedDB store for solving sessions
+- [x] poll LeetCode's own editor database, plus exact Run/Submit code
+- [x] gzip accepted sessions into a private Supabase bucket, restore on demand
+- [x] create the `code-timelines` bucket and `auth.uid()` Storage policies
+- [ ] dashboard query bridge and timeline slider UI
+- [ ] live QA of the editor record-key assumptions on [leetcode.com](http://leetcode.com)
 
 **Logic flow from submissions to the review form**
 

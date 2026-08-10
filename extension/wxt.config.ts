@@ -2,6 +2,12 @@ import { defineConfig } from "wxt";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
+  runner: {
+    chromiumArgs: [
+      '--disable-blink-features=AutomationControlled',
+      '--user-data-dir=./.chrome-dev-data'
+    ]
+  },
   modules: ["@wxt-dev/module-react"],
   manifest: {
     // Interception is done by wrapping window.fetch in the injected bridge,
