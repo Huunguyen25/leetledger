@@ -46,6 +46,7 @@ jobs:
           path: extension/.output/*.zip
           if-no-files-found: error
           retention-days: 14
+          include-hidden-files: true
 
   supabase-integration:
     name: Supabase review upsert
