@@ -55,8 +55,11 @@ describe("ReviewForm", () => {
   });
 
   function change(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string) {
-    element.value = value;
-    element.dispatchEvent(new Event("change", { bubbles: true }));
+    const prototype = Object.getPrototypeOf(element);
+    const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+    setter?.call(element, value);
+    const eventName = element instanceof HTMLSelectElement ? "change" : "input";
+    element.dispatchEvent(new Event(eventName, { bubbles: true }));
   }
 
   function submitButton() {
@@ -122,7 +125,9 @@ describe("ReviewForm", () => {
 
   it("lets the user cancel without writing", async () => {
     await act(async () => {
-      (container.querySelector(".close-icon") as HTMLElement).click();
+      container.querySelector(".close-icon")!.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      );
     });
 
     expect(onCancel).toHaveBeenCalledOnce();
