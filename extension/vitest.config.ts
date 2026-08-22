@@ -13,8 +13,13 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     include: liveSupabase
-      ? ["**/*.integration.test.ts"]
-      : ["**/*.test.ts", "**/*.test.tsx"],
-    exclude: liveSupabase ? [] : ["**/*.integration.test.ts"],
+      ? ["lib/**/*.integration.test.ts"]
+      : [
+          "background/**/*.test.ts",
+          "components/**/*.test.tsx",
+          "content/**/*.test.ts",
+          "lib/**/*.test.ts",
+        ],
+    exclude: liveSupabase ? [] : ["lib/**/*.integration.test.ts"],
   },
 });
