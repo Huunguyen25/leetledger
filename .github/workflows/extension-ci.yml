@@ -1,0 +1,75 @@
+name: Extension CI
+
+on:
+  pull_request:
+    paths:
+      - "extension/**"
+      - ".github/workflows/extension-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "extension/**"
+      - ".github/workflows/extension-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extension-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: extension
+
+jobs:
+  verify:
+    name: Typecheck, test, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - run: npm ci
+      - run: npm run compile
+      - run: npm test
+      - run: npm run build
+      - run: npm run zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leetledger-extension-${{ github.sha }}
+          path: extension/.output/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  supabase-integration:
+    name: Supabase review upsert
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: verify
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      WXT_SUPABASE_URL: ${{ secrets.CI_SUPABASE_URL }}
+      WXT_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.CI_SUPABASE_PUBLISHABLE_KEY }}
+      CI_SUPABASE_EMAIL: ${{ secrets.CI_SUPABASE_EMAIL }}
+      CI_SUPABASE_PASSWORD: ${{ secrets.CI_SUPABASE_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+      - run: npm ci
+      - name: Check integration secrets
+        run: |
+          test -n "$WXT_SUPABASE_URL"
+          test -n "$WXT_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$CI_SUPABASE_EMAIL"
+          test -n "$CI_SUPABASE_PASSWORD"
+      - run: npm run test:integration
