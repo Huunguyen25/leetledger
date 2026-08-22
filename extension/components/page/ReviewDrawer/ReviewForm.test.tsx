@@ -72,7 +72,7 @@ describe("ReviewForm", () => {
     await act(async () => {
       change(selects[0], "O(n)");
       change(selects[1], "O(log n)");
-      change(selects[2], "EDITORIAL");
+      change(selects[2], "SOLUTION_PEEK");
       change(container.querySelector('input[aria-label="Mastery Level"]')!, "4");
       change(container.querySelector("textarea")!, "Use a hash map");
       submitButton().click();
@@ -83,7 +83,7 @@ describe("ReviewForm", () => {
       problemTitle: "Two Sum",
       difficulty: "Easy",
       mastery: 4,
-      assistance: "EDITORIAL",
+      assistance: "SOLUTION_PEEK",
       timeComplexity: "O(n)",
       spaceComplexity: "O(log n)",
       topicTags: [{ name: "Array", slug: "array" }],
