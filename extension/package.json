@@ -13,7 +13,7 @@
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
     "test": "vitest run",
-    "test:integration": "vitest run lib/review/repository.integration.test.ts",
+    "test:integration": "LIVE_SUPABASE=1 vitest run",
     "test:watch": "vitest",
     "postinstall": "wxt prepare"
   },
