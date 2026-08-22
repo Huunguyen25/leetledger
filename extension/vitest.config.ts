@@ -10,6 +10,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    include: ["**/*.test.ts"],
+    include: ["**/*.test.ts", "**/*.test.tsx"],
+    exclude: ["**/*.integration.test.ts"],
   },
 });
