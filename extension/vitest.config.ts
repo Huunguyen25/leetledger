@@ -12,6 +12,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    setupFiles: liveSupabase ? ["./test/setup/browser.ts"] : [],
     include: liveSupabase
       ? ["lib/**/*.integration.test.ts"]
       : [
