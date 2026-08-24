@@ -1,6 +1,8 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
+const liveSupabase = process.env.LIVE_SUPABASE === "1";
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -10,6 +12,15 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
-    include: ["**/*.test.ts"],
+    setupFiles: liveSupabase ? ["./test/setup/browser.ts"] : [],
+    include: liveSupabase
+      ? ["lib/**/*.integration.test.ts"]
+      : [
+          "background/**/*.test.ts",
+          "components/**/*.test.tsx",
+          "content/**/*.test.ts",
+          "lib/**/*.test.ts",
+        ],
+    exclude: liveSupabase ? [] : ["lib/**/*.integration.test.ts"],
   },
 });

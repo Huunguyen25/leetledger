@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { IoMdClose } from "react-icons/io";
 import Slider from "./Slider";
 import type { SubmissionPayload, TopicTag } from "@/types/submission";
@@ -51,6 +51,7 @@ export default function ReviewForm({
   const [spaceComplexity, setSpaceComplexity] = useState<string>("O(1)");
 
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Topic tags arrive prefilled from LeetCode's GraphQL response and stay
@@ -80,7 +81,8 @@ export default function ReviewForm({
   };
 
   const handleSubmit = async () => {
-    if (submitting) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setSubmitError(null);
 
@@ -99,6 +101,7 @@ export default function ReviewForm({
       notes,
     });
 
+    submittingRef.current = false;
     setSubmitting(false);
     if (result.success) {
       onSubmitted?.();
