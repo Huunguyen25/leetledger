@@ -57,7 +57,14 @@ const EMPTY_METADATA: ProblemMetadata = {
 
 function getCsrfToken(cookie: string): string | null {
   const match = cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
+  if (match && typeof match[1] === "string") {
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 /** Creates a per-page metadata cache around LeetCode's GraphQL endpoint. */

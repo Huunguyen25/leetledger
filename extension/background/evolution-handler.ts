@@ -108,21 +108,31 @@ function resolveScope(
 }
 
 /**
- * After Accept closes the active session, the poller may resend unchanged
- * editor code. Refuse to open a new autosave session that merely repeats the
- * last closed head; Run/Submit or a real edit can still start a new attempt.
+ * True when there is no active session and `code` is identical to the latest
+ * closed head for this scope. Used to refuse ghost re-opens after Accept.
  */
-async function isPostAcceptAutosaveGhost(
+async function matchesLatestClosedHead(
   scope: TimelineScope,
-  message: CodeObservedMessage,
+  code: string,
 ): Promise<boolean> {
-  if (message.source !== "autosave") return false;
   if (await getActiveTimeline(scope)) return false;
 
   const closed = await getLatestClosedTimeline(scope);
   if (!closed) return false;
 
-  return checksumCode(normalizeCode(message.code)) === closed.headChecksum;
+  return checksumCode(normalizeCode(code)) === closed.headChecksum;
+}
+
+/**
+ * After Accept closes the active session, unchanged editor code may arrive via
+ * autosave, Run, or Submit. Refuse to open a new session that merely repeats
+ * the last closed head; a real edit (different checksum) starts a new attempt.
+ */
+async function isPostAcceptSameHeadGhost(
+  scope: TimelineScope,
+  message: CodeObservedMessage,
+): Promise<boolean> {
+  return matchesLatestClosedHead(scope, message.code);
 }
 
 /** Appends one observed code version to the active session for its scope. */
@@ -134,7 +144,7 @@ export async function handleCodeObserved(
 
   return enqueue(buildScopeKey(scope), async () => {
     try {
-      if (await isPostAcceptAutosaveGhost(scope, message)) {
+      if (await isPostAcceptSameHeadGhost(scope, message)) {
         return { status: "ignored", reason: "duplicate" };
       }
 
@@ -188,6 +198,12 @@ export async function handleSessionAccepted(
   if (!scope || !language) return;
 
   await enqueue(buildScopeKey(scope), async () => {
+    // Re-Accept of the exact closed solution must not open or archive a thin
+    // new session (common when retesting the review form with no edits).
+    if (message.code && (await matchesLatestClosedHead(scope, message.code))) {
+      return;
+    }
+
     // The bridge already recorded a submit milestone on click. Only append
     // again when Accept carries different code; identical code would only
     // produce a duplicate submit marker.

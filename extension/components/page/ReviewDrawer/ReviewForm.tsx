@@ -5,6 +5,7 @@ import type { SubmissionPayload, TopicTag } from "@/types/submission";
 import { upsertReview } from "@/lib/review/repository";
 import {
   ASSISTANCE_OPTIONS,
+  ASSISTANCE_SRS_WEIGHTS,
   type AssistanceLevel,
 } from "@/lib/assistance/types";
 import "./ReviewDrawer.css";
@@ -56,6 +57,8 @@ export default function ReviewForm({
   // Topic tags arrive prefilled from LeetCode's GraphQL response and stay
   // read-only for now — the combobox UI lands in a follow-up.
   const [topicTags] = useState<TopicTag[]>(submissionData?.topicTags ?? []);
+  const masteryCap = ASSISTANCE_SRS_WEIGHTS[assistanceLevel];
+
   const handleTimeComplexityChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
@@ -67,12 +70,15 @@ export default function ReviewForm({
     setSpaceComplexity(event.target.value);
   };
   const handleMasteryLevelChange = (value: number) => {
-    setMasteryLevel(value);
+    setMasteryLevel(Math.min(value, masteryCap));
   };
   const handleAssistanceLevelChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
   ) => {
-    setAssistanceLevel(event.target.value as AssistanceLevel);
+    const next = event.target.value as AssistanceLevel;
+    const nextCap = ASSISTANCE_SRS_WEIGHTS[next];
+    setAssistanceLevel(next);
+    setMasteryLevel((current) => Math.min(current, nextCap));
   };
   const [notes, setNotes] = useState("");
   const handleNotesChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -159,6 +165,8 @@ export default function ReviewForm({
         <Slider
           value={masteryLevel}
           onChange={handleMasteryLevelChange}
+          max={10}
+          valueMax={masteryCap}
         />
       </div>
       <div className="assistance-level">

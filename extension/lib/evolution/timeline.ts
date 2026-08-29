@@ -109,8 +109,8 @@ export function applyAndVerifyPatch(
   patchText: string,
   expectedAfterChecksum?: string,
 ): PatchApplyResult {
-  let code = before;
-  let applied: boolean[] = [];
+  let code: string;
+  let applied: boolean[];
 
   try {
     const [result, results] = dmp.patch_apply(

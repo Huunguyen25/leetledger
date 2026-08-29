@@ -37,7 +37,7 @@ fetch bridge → content controller → background worker → storage
 
 
 
-## Todo
+## CORE TODO
 
 **Review form — capture / show:**
 
@@ -47,26 +47,20 @@ fetch bridge → content controller → background worker → storage
 - [x] Time & space complexity
 - [x] Solved date
 - [x] Lift fetch interception and problem metadata loading into `lib/leetcode/bridge.ts`.
-- [ ] fancy form up
-- [ ] additional topic tags
-- [ ] add star feature to a favorite a problem.
 
 **Database — wire up / create:**
 
-- [ ] make database schema
-- [x] wire review form to database and create data
+- [x] Review table finished 
+- [ ] refine srs function in supabase to pick assistance level from review form.
+- [x] wire review form to database and create data 
+- [x] Storage bucket for code evolution finished
 
 **Popup**
 
 - [x] mute review form w/ duration
 - [x] open dashboard button
-- [ ] pass the current session to the dashboard
+- [ ] pass the current session to the dashboard (so user do not have to signed in twice)
 - [x] solved history
-
-**Related features**
-
-- [ ] 1) **Manual add review** = popup button that opens a review **and** auto-fills the LeetCode problem (title, number, topics, etc.) so you’re not starting from a blank form.
-- [ ] 2) notification for next solve date (add in backend?)
 
 **Code evolution timeline** (see `.cursor/code-evolution-timeline-architecture.md`)
 
@@ -76,9 +70,29 @@ fetch bridge → content controller → background worker → storage
 - [x] gzip accepted sessions into a private Supabase bucket, restore on demand
 - [x] create the `code-timelines` bucket and `auth.uid()` Storage policies
 - [ ] dashboard query bridge and timeline slider UI
-- [ ] live QA of the editor record-key assumptions on [leetcode.com](http://leetcode.com)
+- [x] live QA of the editor record-key assumptions on [leetcode.com](http://leetcode.com) (QA passed)
 
-**Logic flow from submissions to the review form**
+
+
+## TODOs
+
+- [ ] fancy review form up
+- [ ] additional topic tags
+- [ ] add star feature to a favorite a problem
+- [x] Cap mastery slider based on automatic assistance detection 
+- [ ] Popup resend OTP code (60 second cooldown)
+
+- [ ] 1) **Manual add review** = popup button that opens a review **and** auto-fills the LeetCode problem (title, number, topics, etc.) so you’re not starting from a blank form.
+- [ ] 2) notification for next solve date (add in backend?) 
+
+- [x] fix form to not open/archive a new session when Submit/Accept matches the latest closed head for that scope. Thus subsequent submits with exact solution is excluded. 
+- [ ] run a db clear logic to remove old timeline submission on browswer startup.
+- [ ] lookup latest session, attach to reviews, upsert that reviews with the latest session
+- [ ] Skipped reviews can be completed from the popup or history.
+
+
+
+## **Logic flow from submissions to the review form**
 
 Use [Sequence Diagram viewer](https://sequencediagram.org/)
 
@@ -108,3 +122,34 @@ npm run dev
 Load the unpacked build Chrome reports (usually under `.output/` after `wxt dev` starts; pick the dev folder the CLI prints).
 
 Other scripts: `npm run build`, `npm run compile`, `npm test`. Firefox: `npm run dev:firefox` / `npm run build:firefox`.
+
+## viewing indexedDB dumb for active elements
+
+```js
+const db = await new Promise((ok, no) => {
+  const r = indexedDB.open("LeetLedgerLocal");
+  r.onsuccess = () => ok(r.result);
+  r.onerror = () => no(r.error);
+});
+const all = await new Promise((ok, no) => {
+  const r = db.transaction("timelines").objectStore("timelines").getAll();
+  r.onsuccess = () => ok(r.result);
+  r.onerror = () => no(r.error);
+});
+
+console.table(all.map(t => ({
+  problem: t.problemSlug,
+  lang: t.language,
+  status: t.status,
+  session: t.sessionId?.slice(0, 8),
+  submissionId: t.submissionId,
+  started: new Date(t.startedAt).toISOString(),
+  snapshots: t.snapshots.length,
+  checkpoints: t.snapshots.filter(s => s.kind === "checkpoint").length,
+  patches: t.snapshots.filter(s => s.kind === "patch").length,
+  markers: t.snapshots.filter(s => s.kind === "marker").length,
+  headChars: t.headCode.length,
+})));
+```
+
+c

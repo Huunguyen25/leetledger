@@ -6,10 +6,7 @@ import ReviewForm from "@/components/page/ReviewDrawer/ReviewForm";
 import constants from "@/constants";
 import { setupAssistanceDetectors } from "@/lib/assistance/detectors";
 import { createAssistanceSession } from "@/lib/assistance/session";
-import {
-  isAssistanceLevel,
-  type AssistanceLevel,
-} from "@/lib/assistance/types";
+import { isAssistanceLevel } from "@/lib/assistance/types";
 import {
   getLeetCodeRouteContext,
   parseProblemSlugFromPathname,

@@ -169,6 +169,63 @@ describe("evolution handler", () => {
     expect(await listTimelines(IDENTITY)).toHaveLength(1);
   });
 
+  it("does not open a ghost session from post-accept submit of the same code", async () => {
+    const { handleCodeObserved, handleSessionAccepted } = await import(
+      "./evolution-handler"
+    );
+    await handleCodeObserved(observed(CODE_V1) as never);
+    await handleSessionAccepted({
+      type: constants.MESSAGE_TYPES.SESSION_ACCEPTED,
+      problemSlug: "two-sum",
+      submissionId: "4242",
+      code: CODE_V1,
+      language: "python3",
+      timestamp: Date.now(),
+    } as never);
+    mocks.archiveTimeline.mockClear();
+
+    await expect(
+      handleCodeObserved(observed(CODE_V1, "submit", "9999") as never),
+    ).resolves.toEqual({ status: "ignored", reason: "duplicate" });
+
+    expect(await getActiveTimeline(IDENTITY)).toBeNull();
+    expect(await listTimelines(IDENTITY)).toHaveLength(1);
+  });
+
+  it("does not archive again when Accept repeats the latest closed head", async () => {
+    const { handleCodeObserved, handleSessionAccepted } = await import(
+      "./evolution-handler"
+    );
+    await handleCodeObserved(observed(CODE_V1) as never);
+    await handleSessionAccepted({
+      type: constants.MESSAGE_TYPES.SESSION_ACCEPTED,
+      problemSlug: "two-sum",
+      submissionId: "4242",
+      code: CODE_V1,
+      language: "python3",
+      timestamp: Date.now(),
+    } as never);
+    mocks.archiveTimeline.mockClear();
+
+    await handleSessionAccepted({
+      type: constants.MESSAGE_TYPES.SESSION_ACCEPTED,
+      problemSlug: "two-sum",
+      submissionId: "9999",
+      code: CODE_V1,
+      language: "python3",
+      timestamp: Date.now(),
+    } as never);
+
+    expect(mocks.archiveTimeline).not.toHaveBeenCalled();
+    expect(await getActiveTimeline(IDENTITY)).toBeNull();
+    const timelines = await listTimelines(IDENTITY);
+    expect(timelines).toHaveLength(1);
+    expect(timelines[0]).toMatchObject({
+      submissionId: "4242",
+      headCode: CODE_V1,
+    });
+  });
+
   it("still opens a new session after accept when the code actually changes", async () => {
     const { handleCodeObserved, handleSessionAccepted } = await import(
       "./evolution-handler"

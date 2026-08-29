@@ -28,6 +28,21 @@
   border-radius: 12px;
 }
 
+.marked-slider .slider-cap-region {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: repeating-linear-gradient(
+    -45deg,
+    #ececec,
+    #ececec 3px,
+    #e0e0e0 3px,
+    #e0e0e0 6px
+  );
+  border-radius: 0 12px 12px 0;
+  pointer-events: none;
+}
+
 .marked-slider .slider-fill {
   position: absolute;
   left: 0;
@@ -115,4 +130,12 @@
 .marked-slider .mark-label.active {
   color: #111;
   font-weight: 500;
+}
+
+.marked-slider .mark.capped .mark-dot {
+  background: #e8e8e8;
+}
+
+.marked-slider .mark-label.capped {
+  color: #ddd;
 }

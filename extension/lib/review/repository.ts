@@ -1,5 +1,9 @@
 import { getSupabaseClient } from "@/lib/supabase/client";
 import {
+  cappedMasteryForSrs,
+  isAssistanceLevel,
+} from "@/lib/assistance/types";
+import {
   clearHistoryCache,
   getHistoryCache,
   setHistoryCache,
@@ -20,13 +24,34 @@ export type {
   SolvedReview,
 } from "./types";
 
-const supabase = getSupabaseClient();
+/**
+ * Normalizes user-supplied review fields before persist. Mastery is always
+ * clamped to the assistance SRS cap here so UI/devtools edits cannot write an
+ * uncapped value through this repository path.
+ */
+export function normalizeReviewInput(input: ReviewInput): ReviewInput | null {
+  if (!isAssistanceLevel(input.assistance)) return null;
+  if (!Number.isFinite(input.mastery)) return null;
+
+  const bounded = Math.max(1, Math.min(10, Math.round(input.mastery)));
+  return {
+    ...input,
+    assistance: input.assistance,
+    mastery: cappedMasteryForSrs(bounded, input.assistance),
+  };
+}
 
 /**
  * Inserts or updates the signed-in user's review. Server-side triggers own the
  * scheduling fields, so this repository writes only user-supplied review data.
  */
 export async function upsertReview(input: ReviewInput): Promise<ReviewResult> {
+  const normalized = normalizeReviewInput(input);
+  if (!normalized) {
+    return { success: false, error: "Invalid review input" };
+  }
+
+  const supabase = getSupabaseClient();
   const {
     data: { user },
     error: authError,
@@ -39,16 +64,16 @@ export async function upsertReview(input: ReviewInput): Promise<ReviewResult> {
   const { error } = await supabase.from("reviews").upsert(
     {
       user_id: user.id,
-      problem_slug: input.problemSlug,
-      problem_title: input.problemTitle,
-      leetcode_difficulty: input.difficulty,
-      mastery: input.mastery,
-      assistance: input.assistance,
-      time_complexity: input.timeComplexity ?? null,
-      space_complexity: input.spaceComplexity ?? null,
-      topic_tags: input.topicTags?.map((tag) => tag.slug) ?? null,
-      question_id: input.questionId ?? null,
-      notes: input.notes?.trim() ? input.notes.trim() : null,
+      problem_slug: normalized.problemSlug,
+      problem_title: normalized.problemTitle,
+      leetcode_difficulty: normalized.difficulty,
+      mastery: normalized.mastery,
+      assistance: normalized.assistance,
+      time_complexity: normalized.timeComplexity ?? null,
+      space_complexity: normalized.spaceComplexity ?? null,
+      topic_tags: normalized.topicTags?.map((tag) => tag.slug) ?? null,
+      question_id: normalized.questionId ?? null,
+      notes: normalized.notes?.trim() ? normalized.notes.trim() : null,
     },
     { onConflict: "user_id,problem_slug" },
   );
@@ -63,6 +88,7 @@ export async function upsertReview(input: ReviewInput): Promise<ReviewResult> {
 
 /** Lists the user's most recently solved problems, newest first. */
 export async function listReviews(limit = 25): Promise<ListReviewsResult> {
+  const supabase = getSupabaseClient();
   const {
     data: { user },
     error: authError,

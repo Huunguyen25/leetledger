@@ -59,7 +59,7 @@ describe("identity store boundary", () => {
       ),
     ).toBe(true);
     await vi.waitFor(() => expect(response).toHaveBeenCalledOnce());
-    return response.mock.calls[0][0];
+    return response.mock.calls[0]![0];
   }
 
   it("persists active identity and detects account changes", async () => {

@@ -211,7 +211,8 @@ export async function getActiveTimeline(
 
 /**
  * Most recently updated closed session for a scope. Used to ignore post-accept
- * autosave polls that would otherwise open a ghost session with the same head.
+ * observations (and re-Accepts) that would otherwise open a ghost session with
+ * the same head.
  */
 export async function getLatestClosedTimeline(
   scope: TimelineScope,
