@@ -235,22 +235,25 @@ function extractCode(value: unknown): string | null {
   return null;
 }
 
-/** Reads the complete autosaved code for one problem, or explains why it could not. */
 export async function readEditorCode(options: {
   questionId: string;
   preferredLanguage?: string | null;
 }): Promise<EditorCodeResult> {
   try {
+    // open leetcode indexeddb database
     const db = await openLeetCodeDb();
     if (!db) return { ok: false, reason: "database_missing" };
     if (!db.objectStoreNames.contains(CODE_STORE)) {
+      // code store is missing
       return { ok: false, reason: "store_missing" };
     }
 
     const store = db
       .transaction([CODE_STORE], "readonly")
       .objectStore(CODE_STORE);
+    // Retrieve all saved code record keys (questionId|language) from the LeetCode code store
     const keys = await promisify(store.getAllKeys());
+    // pick the record key that matches the questionId and preferredLanguage
     const target = pickRecordKey(
       keys,
       options.questionId,

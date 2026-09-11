@@ -52,10 +52,14 @@ export async function upsertReview(input: ReviewInput): Promise<ReviewResult> {
   }
 
   const supabase = getSupabaseClient();
+  // Prefer getSession() over getUser(): getUser() always round-trips to Auth
+  // and can stall for tens of seconds on refresh. The subsequent query/upsert
+  // still sends the JWT, so an expired session fails at the API anyway.
   const {
-    data: { user },
+    data: { session },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   if (authError || !user) {
     return { success: false, error: authError?.message ?? "Not signed in" };
@@ -90,9 +94,10 @@ export async function upsertReview(input: ReviewInput): Promise<ReviewResult> {
 export async function listReviews(limit = 25): Promise<ListReviewsResult> {
   const supabase = getSupabaseClient();
   const {
-    data: { user },
+    data: { session },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   if (authError || !user) {
     return { success: false, error: authError?.message ?? "Not signed in" };
