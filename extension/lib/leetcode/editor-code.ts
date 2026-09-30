@@ -1,5 +1,6 @@
 import { browser } from "wxt/browser";
 import constants from "@/constants";
+import { readQuestionIdMap } from "@/lib/leetcode/question-id-map";
 
 /**
  * Read-only adapter over LeetCode's own editor database.
@@ -50,17 +51,22 @@ function promisify<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
-async function readPersistedQuestionIds(): Promise<Record<string, string>> {
+/**
+ * Asks the background worker to merge one slug→id. Fetch stays here so the
+ * lock only covers storage; failures leave the in-memory cache intact.
+ */
+async function persistQuestionId(
+  problemSlug: string,
+  questionId: string,
+): Promise<void> {
   try {
-    const stored = await browser.storage.local.get(
-      constants.PROBLEM_ID_MAP_KEY,
-    );
-    const map = stored[constants.PROBLEM_ID_MAP_KEY];
-    return typeof map === "object" && map !== null
-      ? (map as Record<string, string>)
-      : {};
+    await browser.runtime.sendMessage({
+      type: constants.MESSAGE_TYPES.PERSIST_QUESTION_ID,
+      problemSlug,
+      questionId,
+    });
   } catch {
-    return {};
+    // Service worker may be restarting; the next cold resolve refetches.
   }
 }
 
@@ -75,7 +81,7 @@ export async function resolveQuestionId(
   const cached = questionIdCache.get(problemSlug);
   if (cached) return cached;
 
-  const persisted = await readPersistedQuestionIds();
+  const persisted = await readQuestionIdMap();
   if (persisted[problemSlug]) {
     questionIdCache.set(problemSlug, persisted[problemSlug]);
     return persisted[problemSlug];
@@ -108,12 +114,7 @@ export async function resolveQuestionId(
     if (typeof questionId !== "string" || !questionId) return null;
 
     questionIdCache.set(problemSlug, questionId);
-    await browser.storage.local.set({
-      [constants.PROBLEM_ID_MAP_KEY]: {
-        ...persisted,
-        [problemSlug]: questionId,
-      },
-    });
+    await persistQuestionId(problemSlug, questionId);
     return questionId;
   } catch {
     return null;
@@ -122,23 +123,67 @@ export async function resolveQuestionId(
   }
 }
 
-/** Reads LeetCode's selected language from its own page storage. */
-export function detectSelectedLanguage(): string | null {
+/** True when `lang` is a non-empty language slug after trimming. */
+export function usableLanguage(
+  lang: string | null | undefined,
+): lang is string {
+  return typeof lang === "string" && lang.trim().length > 0;
+}
+
+function parseStoredLanguage(raw: string): string | null {
   try {
+    const parsed = raw.startsWith('"') ? JSON.parse(raw) : raw;
+    return usableLanguage(parsed) ? parsed.trim() : null;
+  } catch {
+    return usableLanguage(raw) ? raw.trim() : null;
+  }
+}
+
+/**
+ * Prefer LeetCode's per-problem language key (`{questionId}_{userId}_lang`),
+ * then fall back to `global_lang*`. Page-world only.
+ */
+export function detectSelectedLanguage(
+  questionId?: string | null,
+  userId?: string | null,
+): string | null {
+  try {
+    if (questionId && userId) {
+      const problemLang = parseStoredLanguage(
+        localStorage.getItem(`${questionId}_${userId}_lang`) ?? "",
+      );
+      if (problemLang) return problemLang;
+    }
+
+    const globalExact = parseStoredLanguage(
+      localStorage.getItem("global_lang") ?? "",
+    );
+    if (globalExact) return globalExact;
+
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key || !LANGUAGE_STORAGE_PATTERN.test(key)) continue;
 
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-
-      const parsed = raw.startsWith('"') ? JSON.parse(raw) : raw;
-      if (typeof parsed === "string" && parsed.trim()) return parsed.trim();
+      const parsed = parseStoredLanguage(localStorage.getItem(key) ?? "");
+      if (parsed) return parsed;
     }
   } catch {
     // Language detection is a hint; key scanning can still disambiguate.
   }
   return null;
+}
+
+/**
+ * Treat blank strings as missing, then fall back to LeetCode page storage.
+ * Content-script only — the background cannot read localStorage.
+ */
+export function resolveLanguage(
+  lang: string | null | undefined,
+  questionId?: string | null,
+  userId?: string | null,
+): string | null {
+  if (usableLanguage(lang)) return lang.trim();
+  return detectSelectedLanguage(questionId, userId);
 }
 
 /**

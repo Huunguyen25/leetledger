@@ -42,6 +42,7 @@ describe("evolution controller", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("forwards the first read and skips unchanged polls", async () => {
@@ -160,6 +161,32 @@ describe("evolution controller", () => {
         type: constants.MESSAGE_TYPES.SESSION_ACCEPTED,
         problemSlug: "two-sum",
         submissionId: "4242",
+        language: "python3",
+      }),
+    );
+  });
+
+  it("treats blank Accept language as missing and uses page detection", async () => {
+    vi.stubGlobal("localStorage", {
+      length: 1,
+      key: (index: number) => (index === 0 ? "global_lang" : null),
+      getItem: (key: string) => (key === "global_lang" ? '"python3"' : null),
+    });
+
+    const readCode = vi.fn().mockResolvedValue({ ok: false, reason: "read_failed" });
+    const controls = start(readCode);
+
+    controls.recordAcceptedSubmission({
+      problemSlug: "two-sum",
+      submissionId: "4242",
+      code: CODE_V2,
+      language: "",
+    });
+    controls.teardown();
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: constants.MESSAGE_TYPES.SESSION_ACCEPTED,
         language: "python3",
       }),
     );

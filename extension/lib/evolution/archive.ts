@@ -1,6 +1,7 @@
 import constants from "@/constants";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type {
+  EvolutionSource,
   TimelineArchive,
   TimelineRecord,
   TimelineSnapshot,
@@ -143,20 +144,76 @@ export async function gunzipArchive(
   return JSON.parse(new TextDecoder().decode(json)) as TimelineArchive;
 }
 
+function isEvolutionSource(value: unknown): value is EvolutionSource {
+  return value === "autosave" || value === "run" || value === "submit";
+}
+
+function isMilestoneSource(value: unknown): value is "run" | "submit" {
+  return value === "run" || value === "submit";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object";
+}
+
+/**
+ * Checks if the given value is a valid TimelineSnapshot.
+ * Used before replaying a snapshot or integrity checks.
+ * Returns true if the value:
+ *   - Is an object,
+ *   - Has a numeric sequence and timestamp,
+ *   - Has a valid source ("autosave", "run", or "submit"),
+ *   - Has a kind of "checkpoint", "patch", or "marker", each with required fields:
+ *     * For "checkpoint": has string fullCode and afterChecksum.
+ *     * For "patch": has string patchText, beforeChecksum, and afterChecksum.
+ *     * For "marker": source must be "run" or "submit", has string codeChecksum, and optional string submissionId if present.
+ */
+function isValidSnapshot(value: unknown): value is TimelineSnapshot {
+  if (!isRecord(value)) return false;
+
+  const { sequence, timestamp, source, kind } = value;
+  if (typeof sequence !== "number") return false;
+  if (typeof timestamp !== "number") return false;
+  if (!isEvolutionSource(source)) return false;
+
+  if (kind === "checkpoint") {
+    return (
+      typeof value.fullCode === "string" &&
+      typeof value.afterChecksum === "string"
+    );
+  }
+
+  if (kind === "patch") {
+    return (
+      typeof value.patchText === "string" &&
+      typeof value.beforeChecksum === "string" &&
+      typeof value.afterChecksum === "string"
+    );
+  }
+
+  if (kind === "marker") {
+    if (!isMilestoneSource(source)) return false;
+    if (typeof value.codeChecksum !== "string") return false;
+    if (
+      value.submissionId !== undefined &&
+      typeof value.submissionId !== "string"
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
 function isSnapshotChainValid(snapshots: unknown): snapshots is TimelineSnapshot[] {
   if (!Array.isArray(snapshots) || snapshots.length === 0) return false;
 
   let previousSequence = -1;
   for (const snapshot of snapshots) {
-    if (!snapshot || typeof snapshot !== "object") return false;
-    const { sequence, kind } = snapshot as TimelineSnapshot;
-    if (typeof sequence !== "number" || sequence <= previousSequence) {
-      return false;
-    }
-    if (kind !== "checkpoint" && kind !== "patch" && kind !== "marker") {
-      return false;
-    }
-    previousSequence = sequence;
+    if (!isValidSnapshot(snapshot)) return false;
+    if (snapshot.sequence <= previousSequence) return false;
+    previousSequence = snapshot.sequence;
   }
 
   return snapshots[0].kind === "checkpoint";

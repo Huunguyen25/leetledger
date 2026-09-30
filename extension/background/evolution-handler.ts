@@ -4,6 +4,7 @@ import { archiveTimeline } from "@/lib/evolution/archive";
 import {
   buildScopeKey,
   getActiveTimeline,
+  getActiveTimelinesForProblem,
   getLatestClosedTimeline,
   listTimelinesByStatus,
   markTimelineAccepted,
@@ -21,6 +22,7 @@ import type {
   CodeObservedMessage,
   EvolutionSource,
   SessionAcceptedMessage,
+  TimelineRecord,
 } from "@/types/evolution";
 
 /**
@@ -92,6 +94,12 @@ function isSessionAcceptedMessage(
   );
 }
 
+/** Blank strings are missing — never coerce null into "". */
+function usableLanguage(lang: string | null | undefined): string | null {
+  const trimmed = lang?.trim();
+  return trimmed ? trimmed : null;
+}
+
 function resolveScope(
   problemSlug: string,
   language: string,
@@ -105,6 +113,50 @@ function resolveScope(
     problemSlug,
     language,
   };
+}
+
+/**
+ * When Accept arrives without a language, recover it from the open session(s)
+ * for this problem so we do not leave an active timeline unarchived.
+ */
+async function inferLanguageFromActiveTimelines(
+  problemSlug: string,
+  code: string | null,
+): Promise<string | null> {
+  const identity = getActiveIdentity();
+  if (!identity?.supabaseUid || !identity.leetcodeUsername) return null;
+
+  const active = await getActiveTimelinesForProblem(
+    {
+      supabaseUid: identity.supabaseUid,
+      leetcodeUsername: identity.leetcodeUsername,
+    },
+    problemSlug,
+  );
+  if (active.length === 0) return null;
+  if (active.length === 1) return active[0].language;
+
+  if (code) {
+    const checksum = checksumCode(normalizeCode(code));
+    const match = active.find(
+      (timeline: TimelineRecord) => timeline.headChecksum === checksum,
+    );
+    if (match) return match.language;
+  }
+
+  // Most recently updated active session for this problem.
+  return active[0].language;
+}
+
+async function resolveAcceptLanguage(
+  problemSlug: string,
+  language: string | null | undefined,
+  code: string | null,
+): Promise<string | null> {
+  return (
+    usableLanguage(language) ??
+    (await inferLanguageFromActiveTimelines(problemSlug, code))
+  );
 }
 
 /**
@@ -193,8 +245,14 @@ export async function handleCodeObserved(
 export async function handleSessionAccepted(
   message: SessionAcceptedMessage,
 ): Promise<void> {
-  const language = message.language ?? "";
-  const scope = resolveScope(message.problemSlug, language);
+  const language = await resolveAcceptLanguage(
+    message.problemSlug,
+    message.language,
+    message.code,
+  );
+  const scope = language
+    ? resolveScope(message.problemSlug, language)
+    : null;
   if (!scope || !language) return;
 
   await enqueue(buildScopeKey(scope), async () => {

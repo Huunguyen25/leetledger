@@ -3,7 +3,7 @@ import constants from "@/constants";
 import {
   readCurrentEditorCode,
   closeLeetCodeDb,
-  detectSelectedLanguage,
+  resolveLanguage,
 } from "@/lib/leetcode/editor-code";
 import { getLeetCodeRouteContext } from "@/lib/leetcode/routes";
 import type {
@@ -135,7 +135,7 @@ export function startEvolutionTracking(
 
       forwardCode(
         milestone.code,
-        milestone.language ?? detectSelectedLanguage() ?? "unknown",
+        resolveLanguage(milestone.language) ?? "unknown",
         slug,
         milestone.source,
         milestone.timestamp,
@@ -150,7 +150,7 @@ export function startEvolutionTracking(
         problemSlug,
         submissionId,
         code,
-        language: language ?? detectSelectedLanguage(),
+        language: resolveLanguage(language),
         timestamp: Date.now(),
       };
       // Keep lastSentCode so the next autosave poll of unchanged editor code

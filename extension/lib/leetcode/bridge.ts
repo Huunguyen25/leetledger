@@ -23,8 +23,15 @@ import type {
 
 interface PendingCodeInfo {
   typedCode: string;
-  lang: string;
+  /** Null when the submit body omitted lang — never store "". */
+  lang: string | null;
   titleSlug: string | null;
+}
+
+/** Blank strings are missing; keep null so downstream fallbacks can run. */
+function usableLang(lang: string | null | undefined): string | null {
+  const trimmed = lang?.trim();
+  return trimmed ? trimmed : null;
 }
 
 export interface ProblemMetadata {
@@ -240,7 +247,7 @@ export function installFetchBridge({
           reportCodeMilestone(
             "run",
             body.typed_code,
-            body.lang ?? null,
+            usableLang(body.lang),
             parseProblemSlugFromPathname(window.location.pathname),
           );
         }
@@ -264,7 +271,7 @@ export function installFetchBridge({
             );
 
             if (titleSlug) void metadata.fetch(titleSlug);
-            reportCodeMilestone("submit", typedCode, lang ?? null, titleSlug);
+            reportCodeMilestone("submit", typedCode, usableLang(lang), titleSlug);
 
             const clone = response.clone();
             void clone
@@ -276,7 +283,7 @@ export function installFetchBridge({
                 if (submissionId) {
                   pendingSubmissions.set(submissionId, {
                     typedCode,
-                    lang: lang ?? "",
+                    lang: usableLang(lang),
                     titleSlug,
                   });
                 }
@@ -316,7 +323,7 @@ export function installFetchBridge({
             attemptId: submissionId,
             submissionData: data,
             typedCode: codeInfo?.typedCode ?? null,
-            lang: codeInfo?.lang ?? data.lang ?? null,
+            lang: usableLang(codeInfo?.lang) ?? usableLang(data.lang),
             topicTags,
             difficulty,
           };

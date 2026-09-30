@@ -12,6 +12,8 @@ const constants = {
     CODE_OBSERVED: "CODE_OBSERVED",
     /** Content-script -> background: close and archive the accepted session. */
     SESSION_ACCEPTED: "SESSION_ACCEPTED",
+    /** Content-script -> background: merge one slug→questionId into storage. */
+    PERSIST_QUESTION_ID: "PERSIST_QUESTION_ID",
   } as const,
   STORAGE_PREFIX: "ll_result:",
   /**
@@ -39,8 +41,8 @@ const constants = {
   IDENTITY_KEY: "ll_active_identity",
   /**
    * Cached problem-slug -> LeetCode question ID map. The question ID is part of
-   * LeetCode's editor record key and never changes for a problem.
-   * See `lib/leetcode/editor-code.ts`.
+   * LeetCode's editor record key and never changes for a problem. Written only
+   * by the background queue; see `background/question-id-handler.ts`.
    */
   PROBLEM_ID_MAP_KEY: "ll_problem_id_map",
   /**

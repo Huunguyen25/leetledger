@@ -210,6 +210,30 @@ export async function getActiveTimeline(
 }
 
 /**
+ * Active solving sessions for one problem across every language. Used when an
+ * Accept message arrives without a usable language so the background can still
+ * close the open timeline.
+ */
+export async function getActiveTimelinesForProblem(
+  identity: TimelineIdentity,
+  problemSlug: string,
+): Promise<TimelineRecord[]> {
+  return withStore("readonly", async (store) => {
+    const records = await promisify<TimelineRecord[]>(
+      store.index("identityKey").getAll(buildIdentityKey(identity)),
+    );
+    return records
+      .filter(
+        (record) =>
+          record.problemSlug === problemSlug &&
+          Boolean(record.activeScopeKey) &&
+          record.status === "active",
+      )
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  });
+}
+
+/**
  * Most recently updated closed session for a scope. Used to ignore post-accept
  * observations (and re-Accepts) that would otherwise open a ghost session with
  * the same head.

@@ -8,6 +8,7 @@ import {
   closeTimelineDb,
   deleteTimelinesForIdentity,
   getActiveTimeline,
+  getActiveTimelinesForProblem,
   getLatestClosedTimeline,
   getTimeline,
   listTimelines,
@@ -116,6 +117,22 @@ describe("timeline storage", () => {
     expect(bobTimelines).toHaveLength(1);
     expect(bobTimelines[0]).toMatchObject({ leetcodeUsername: "bob" });
     expect(await getActiveTimeline(BOB)).toMatchObject({ headCode: CODE_V2 });
+  });
+
+  it("lists active timelines for a problem across languages", async () => {
+    await record(ALICE, CODE_V1);
+    await record({ ...ALICE, language: "java" }, CODE_V2);
+    await record({ ...ALICE, problemSlug: "add-two-numbers" }, CODE_V1);
+    await markTimelineAccepted(ALICE, "9001");
+
+    const active = await getActiveTimelinesForProblem(ALICE, "two-sum");
+
+    expect(active).toHaveLength(1);
+    expect(active[0]).toMatchObject({
+      language: "java",
+      problemSlug: "two-sum",
+      status: "active",
+    });
   });
 
   it("closes the accepted session so the next attempt starts a new one", async () => {

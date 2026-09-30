@@ -291,4 +291,86 @@ describe("evolution handler", () => {
 
     expect(mocks.archiveTimeline).not.toHaveBeenCalled();
   });
+
+  it("closes the open session when Accept language is null", async () => {
+    const { handleCodeObserved, handleSessionAccepted } = await import(
+      "./evolution-handler"
+    );
+    await handleCodeObserved(observed(CODE_V1) as never);
+
+    await handleSessionAccepted({
+      type: constants.MESSAGE_TYPES.SESSION_ACCEPTED,
+      problemSlug: "two-sum",
+      submissionId: "4242",
+      code: CODE_V1,
+      language: null,
+      timestamp: Date.now(),
+    } as never);
+
+    expect(await getActiveTimeline(IDENTITY)).toBeNull();
+    const [timeline] = await listTimelines(IDENTITY);
+    expect(timeline).toMatchObject({
+      status: "accepted",
+      submissionId: "4242",
+      language: "python3",
+    });
+    expect(mocks.archiveTimeline).toHaveBeenCalledOnce();
+  });
+
+  it("closes the open session when Accept language is blank", async () => {
+    const { handleCodeObserved, handleSessionAccepted } = await import(
+      "./evolution-handler"
+    );
+    await handleCodeObserved(observed(CODE_V1) as never);
+
+    await handleSessionAccepted({
+      type: constants.MESSAGE_TYPES.SESSION_ACCEPTED,
+      problemSlug: "two-sum",
+      submissionId: "4242",
+      code: CODE_V1,
+      language: "   ",
+      timestamp: Date.now(),
+    } as never);
+
+    expect(await getActiveTimeline(IDENTITY)).toBeNull();
+    expect(mocks.archiveTimeline).toHaveBeenCalledOnce();
+  });
+
+  it("picks the matching language when multiple active sessions exist", async () => {
+    const { handleCodeObserved, handleSessionAccepted } = await import(
+      "./evolution-handler"
+    );
+    const cppCode = "class Solution { public: vector<int> twoSum() { return {}; } };";
+
+    await handleCodeObserved(observed(CODE_V1) as never);
+    await handleCodeObserved({
+      ...observed(cppCode),
+      language: "cpp",
+    } as never);
+
+    await handleSessionAccepted({
+      type: constants.MESSAGE_TYPES.SESSION_ACCEPTED,
+      problemSlug: "two-sum",
+      submissionId: "4242",
+      code: cppCode,
+      language: null,
+      timestamp: Date.now(),
+    } as never);
+
+    expect(await getActiveTimeline(IDENTITY)).toMatchObject({
+      language: "python3",
+      status: "active",
+    });
+    expect(
+      await getActiveTimeline({ ...IDENTITY, language: "cpp" }),
+    ).toBeNull();
+
+    const timelines = await listTimelines(IDENTITY);
+    const accepted = timelines.find((timeline) => timeline.status === "accepted");
+    expect(accepted).toMatchObject({
+      language: "cpp",
+      submissionId: "4242",
+      headCode: cppCode,
+    });
+  });
 });

@@ -152,4 +152,14 @@ console.table(all.map(t => ({
 })));
 ```
 
-c
+```js
+const t = all.find(x => x.problemSlug === "remove-element");
+
+console.table(t.snapshots.map(s => ({
+  seq: s.sequence,
+  kind: s.kind,
+  source: s.source,
+  at: new Date(s.timestamp).toLocaleTimeString(),
+  bytes: s.fullCode?.length ?? s.patchText?.length ?? 0,
+})));
+```

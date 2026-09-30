@@ -4,6 +4,7 @@ import {
   retryPendingArchives,
 } from "@/background/evolution-handler";
 import { registerIdentityStore } from "@/background/identity-store";
+import { registerQuestionIdHandler } from "@/background/question-id-handler";
 import {
   clearStaleResults,
   registerSubmissionHandler,
@@ -14,6 +15,7 @@ export default defineBackground(() => {
   registerIdentityStore(tracker);
   registerSubmissionHandler(tracker);
   registerEvolutionHandler();
+  registerQuestionIdHandler();
   void clearStaleResults();
   void retryPendingArchives();
 });

@@ -128,6 +128,49 @@ describe("timeline archive", () => {
     ).toBeNull();
   });
 
+  it("rejects malformed snapshot payloads without throwing", () => {
+    const archive = buildArchive(acceptedTimeline())!;
+
+    const cases = [
+      [{ kind: "checkpoint", sequence: 0 }],
+      [
+        {
+          kind: "checkpoint",
+          sequence: 0,
+          timestamp: 1,
+          source: "autosave",
+          afterChecksum: "abc",
+        },
+      ],
+      [
+        {
+          kind: "patch",
+          sequence: 1,
+          timestamp: 2,
+          source: "autosave",
+          beforeChecksum: "a",
+          afterChecksum: "b",
+        },
+      ],
+      [
+        {
+          kind: "marker",
+          sequence: 1,
+          timestamp: 2,
+          source: "autosave",
+          codeChecksum: "abc",
+        },
+      ],
+    ] as const;
+
+    for (const snapshots of cases) {
+      expect(() =>
+        validateArchive({ ...archive, snapshots }, IDENTITY),
+      ).not.toThrow();
+      expect(validateArchive({ ...archive, snapshots }, IDENTITY)).toBeNull();
+    }
+  });
+
   it("marks the timeline archived after a confirmed upload", async () => {
     const timeline = acceptedTimeline();
     await putTimeline(timeline);
