@@ -49,9 +49,8 @@ export default function MuteControl() {
     getMuteUntil().then(apply);
 
     const onChanged = (changes: Record<string, { newValue?: unknown }>) => {
-      if (constants.MUTE_KEY in changes) {
-        apply(changes[constants.MUTE_KEY].newValue);
-      }
+      const change = changes[constants.MUTE_KEY];
+      if (change) apply(change.newValue);
     };
     browser.storage.local.onChanged.addListener(onChanged);
 

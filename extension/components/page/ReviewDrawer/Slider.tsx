@@ -5,7 +5,13 @@ interface SliderProps {
   value: number;
   onChange: (value: number) => void;
   min?: number;
+  /** Visual track / mark upper bound (always 10 for mastery). */
   max?: number;
+  /**
+   * Hard stop for the thumb. Defaults to `max`. Keep `max` at 10 and set this
+   * to the assistance SRS cap so marks stay full-width while drag is limited.
+   */
+  valueMax?: number;
   step?: number;
 }
 
@@ -14,25 +20,29 @@ export default function Slider({
   onChange,
   min = 1,
   max = 10,
+  valueMax = max,
   step = 1,
 }: SliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const thumbMax = Math.max(min, Math.min(max, valueMax));
   const marks = Array.from(
     { length: (max - min) / step + 1 },
     (_, index) => min + index * step,
   );
-  const percentage = (value - min) / (max - min);
+  const clampedValue = Math.max(min, Math.min(thumbMax, value));
+  const percentage = (clampedValue - min) / (max - min);
+  const capPercentage = (thumbMax - min) / (max - min);
 
   const valueFromClient = useCallback(
     (clientX: number): number => {
-      if (!trackRef.current) return value;
+      if (!trackRef.current) return clampedValue;
       const { left, width } = trackRef.current.getBoundingClientRect();
       const ratio = Math.max(0, Math.min(1, (clientX - left) / width));
       const raw = min + ratio * (max - min);
       const stepped = Math.round((raw - min) / step) * step + min;
-      return Math.max(min, Math.min(max, stepped));
+      return Math.max(min, Math.min(thumbMax, stepped));
     },
-    [max, min, step, value],
+    [clampedValue, max, min, step, thumbMax],
   );
 
   const handlePointerDown = useCallback(
@@ -55,19 +65,19 @@ export default function Slider({
     (event: React.KeyboardEvent) => {
       if (event.key === "ArrowRight" || event.key === "ArrowUp") {
         event.preventDefault();
-        onChange(Math.min(max, value + step));
+        onChange(Math.min(thumbMax, clampedValue + step));
       } else if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
         event.preventDefault();
-        onChange(Math.max(min, value - step));
+        onChange(Math.max(min, clampedValue - step));
       } else if (event.key === "Home") {
         event.preventDefault();
         onChange(min);
       } else if (event.key === "End") {
         event.preventDefault();
-        onChange(max);
+        onChange(thumbMax);
       }
     },
-    [max, min, onChange, step, value],
+    [clampedValue, min, onChange, step, thumbMax],
   );
 
   return (
@@ -77,7 +87,7 @@ export default function Slider({
           className="slider-tooltip"
           style={{ left: `${percentage * 100}%` }}
         >
-          {value}
+          {clampedValue}
         </div>
 
         <div
@@ -86,12 +96,21 @@ export default function Slider({
           role="slider"
           tabIndex={0}
           aria-valuemin={min}
-          aria-valuemax={max}
-          aria-valuenow={value}
+          aria-valuemax={thumbMax}
+          aria-valuenow={clampedValue}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onKeyDown={handleKeyDown}
         >
+          {thumbMax < max && (
+            <div
+              className="slider-cap-region"
+              style={{
+                left: `${capPercentage * 100}%`,
+                width: `${(1 - capPercentage) * 100}%`,
+              }}
+            />
+          )}
           <div
             className="slider-fill"
             style={{ width: `${percentage * 100}%` }}
@@ -105,15 +124,16 @@ export default function Slider({
         <div className="marks">
           {marks.map((mark) => {
             const markPercentage = ((mark - min) / (max - min)) * 100;
+            const aboveCap = mark > thumbMax;
             return (
               <div
                 key={mark}
-                className="mark"
+                className={`mark${aboveCap ? " capped" : ""}`}
                 style={{ left: `${markPercentage}%` }}
               >
                 <div className="mark-dot" />
                 <span
-                  className={`mark-label${mark === value ? " active" : ""}`}
+                  className={`mark-label${mark === clampedValue ? " active" : ""}${aboveCap ? " capped" : ""}`}
                 >
                   {mark}
                 </span>

@@ -6,6 +6,14 @@ const constants = {
     IDENTITY_REPORT: "IDENTITY_REPORT",
     /** Page-world -> content-script: an assistance signal was detected. */
     ASSISTANCE_SIGNAL: "LEETCODE_ASSISTANCE_SIGNAL",
+    /** Page-world -> content-script: exact code from a Run or Submit request. */
+    CODE_MILESTONE: "LEETCODE_CODE_MILESTONE",
+    /** Content-script -> background: an observed editor code version. */
+    CODE_OBSERVED: "CODE_OBSERVED",
+    /** Content-script -> background: close and archive the accepted session. */
+    SESSION_ACCEPTED: "SESSION_ACCEPTED",
+    /** Content-script -> background: merge one slug→questionId into storage. */
+    PERSIST_QUESTION_ID: "PERSIST_QUESTION_ID",
   } as const,
   STORAGE_PREFIX: "ll_result:",
   /**
@@ -31,6 +39,17 @@ const constants = {
    * background identity store; read by content scripts and future sync features.
    */
   IDENTITY_KEY: "ll_active_identity",
+  /**
+   * Cached problem-slug -> LeetCode question ID map. The question ID is part of
+   * LeetCode's editor record key and never changes for a problem. Written only
+   * by the background queue; see `background/question-id-handler.ts`.
+   */
+  PROBLEM_ID_MAP_KEY: "ll_problem_id_map",
+  /**
+   * Private Supabase Storage bucket holding gzipped code-evolution timelines.
+   * See `lib/evolution/archive.ts`.
+   */
+  TIMELINE_BUCKET: "code-timelines",
   /**
    * Web dashboard URL opened from the popup. Override per environment with the
    * WXT_DASHBOARD_URL env var; falls back to the local Next.js dev server.

@@ -45,7 +45,7 @@ function normalizeSubmissionData(
     difficulty,
     ...(raw.question_id != null && { questionId: String(raw.question_id) }),
     ...(code != null && { code }),
-    ...(lang != null && { lang }),
+    ...(typeof lang === "string" && lang.trim() && { lang: lang.trim() }),
     ...(topicTags != null && topicTags.length > 0 && { topicTags }),
   };
 }
