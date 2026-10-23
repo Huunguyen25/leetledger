@@ -1,7 +1,5 @@
+import { OverviewWorkspace } from "@/components/dashboard/overview-workspace";
+
 export default function Home() {
-  return (
-    <div>
-    <h1>Hello World</h1>
-    </div>
-  );
+  return <OverviewWorkspace />;
 }
