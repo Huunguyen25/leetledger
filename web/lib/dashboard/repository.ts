@@ -90,23 +90,48 @@ export function subscribeToDashboardAuth(
   return () => data.subscription.unsubscribe();
 }
 
-export async function sendDashboardOtp(email: string) {
+export async function requestDashboardSignInOtp(
+  email: string,
+  password: string,
+) {
   const supabase = getDashboardClient();
   if (!supabase) throw new Error("Supabase is not configured.");
+  const { error: passwordError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (passwordError) throw passwordError;
+  // Do not keep the intermediate password-only session.
+  const { error: signOutError } = await supabase.auth.signOut();
+  if (signOutError) throw signOutError;
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    options: { shouldCreateUser: false },
   });
   if (error) throw error;
 }
 
-export async function verifyDashboardOtp(email: string, token: string) {
+export async function requestDashboardSignUpOtp(
+  email: string,
+  password: string,
+) {
+  const supabase = getDashboardClient();
+  if (!supabase) throw new Error("Supabase is not configured.");
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
+}
+
+export async function verifyDashboardOtp(
+  email: string,
+  token: string,
+  type: "email" | "signup",
+) {
   const supabase = getDashboardClient();
   if (!supabase) throw new Error("Supabase is not configured.");
   const { error } = await supabase.auth.verifyOtp({
     email,
     token,
-    type: "email",
+    type,
   });
   if (error) throw error;
 }

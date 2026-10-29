@@ -34,7 +34,9 @@ function ShellContent({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [online, setOnline] = useState(true);
   const [otpEmail, setOtpEmail] = useState("");
+  const [otpPassword, setOtpPassword] = useState("");
   const [otpToken, setOtpToken] = useState("");
+  const [authFlow, setAuthFlow] = useState<"sign-in" | "sign-up">("sign-in");
   const [otpSent, setOtpSent] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
@@ -43,7 +45,8 @@ function ShellContent({ children }: { children: ReactNode }) {
     sessionEmail,
     dataStatus,
     dataError,
-    sendOtp,
+    requestSignInOtp,
+    requestSignUpOtp,
     verifyOtp,
     signOut,
   } = useDashboard();
@@ -172,13 +175,22 @@ function ShellContent({ children }: { children: ReactNode }) {
     setAuthMessage(null);
     try {
       if (!otpSent) {
-        await sendOtp(otpEmail.trim());
+        if (authFlow === "sign-in") {
+          await requestSignInOtp(otpEmail.trim(), otpPassword);
+        } else {
+          await requestSignUpOtp(otpEmail.trim(), otpPassword);
+        }
         setOtpSent(true);
         setAuthMessage("Check your email for the six-digit code.");
       } else {
-        await verifyOtp(otpEmail.trim(), otpToken.trim());
+        await verifyOtp(
+          otpEmail.trim(),
+          otpToken.trim(),
+          authFlow === "sign-up" ? "signup" : "email",
+        );
         setOtpToken("");
         setOtpSent(false);
+        setOtpPassword("");
         setAccountOpen(false);
       }
     } catch (error) {
@@ -346,8 +358,21 @@ function ShellContent({ children }: { children: ReactNode }) {
                   <form className="account-auth" onSubmit={onAuthSubmit}>
                     <div>
                       <strong>Sign in to sync</strong>
-                      <span>Use the same email as the extension.</span>
+                      <span>Use email, password, then OTP verification.</span>
                     </div>
+                    <label>
+                      <span>Action</span>
+                      <select
+                        value={authFlow}
+                        disabled={otpSent || authBusy}
+                        onChange={(event) =>
+                          setAuthFlow(event.target.value as "sign-in" | "sign-up")
+                        }
+                      >
+                        <option value="sign-in">Sign in</option>
+                        <option value="sign-up">Create account</option>
+                      </select>
+                    </label>
                     <label>
                       <span>Email</span>
                       <input
@@ -357,6 +382,19 @@ function ShellContent({ children }: { children: ReactNode }) {
                         value={otpEmail}
                         disabled={otpSent || authBusy}
                         onChange={(event) => setOtpEmail(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span>Password</span>
+                      <input
+                        type="password"
+                        required
+                        autoComplete={
+                          authFlow === "sign-up" ? "new-password" : "current-password"
+                        }
+                        value={otpPassword}
+                        disabled={otpSent || authBusy}
+                        onChange={(event) => setOtpPassword(event.target.value)}
                       />
                     </label>
                     {otpSent && (
@@ -387,7 +425,9 @@ function ShellContent({ children }: { children: ReactNode }) {
                         ? "Working…"
                         : otpSent
                           ? "Verify code"
-                          : "Send code"}
+                          : authFlow === "sign-up"
+                            ? "Create + send code"
+                            : "Sign in + send code"}
                     </button>
                     {otpSent && (
                       <button
@@ -398,7 +438,7 @@ function ShellContent({ children }: { children: ReactNode }) {
                           setAuthMessage(null);
                         }}
                       >
-                        Use a different email
+                        Use different credentials
                       </button>
                     )}
                   </form>

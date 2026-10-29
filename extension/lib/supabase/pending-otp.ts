@@ -4,9 +4,12 @@ import constants from "@/constants";
 /** Supabase email codes are valid for one hour by default. */
 export const OTP_TTL_MS = 60 * 60 * 1000;
 
-interface PendingOtp {
+export type PendingOtpFlow = "sign-in" | "sign-up";
+
+export interface PendingOtp {
   email: string;
   expiresAt: number;
+  flow: PendingOtpFlow;
 }
 
 function isPendingOtp(value: unknown): value is PendingOtp {
@@ -30,10 +33,30 @@ export async function getPendingOtp(): Promise<string | null> {
   return pending.email;
 }
 
-export async function setPendingOtp(email: string): Promise<void> {
+/** Restores an unexpired popup verification flow and account intent. */
+export async function getPendingOtpState(): Promise<PendingOtp | null> {
+  const result = await browser.storage.local.get(constants.PENDING_OTP_KEY);
+  const pending = result[constants.PENDING_OTP_KEY];
+  if (!isPendingOtp(pending)) return null;
+  if (pending.expiresAt <= Date.now()) {
+    await clearPendingOtp();
+    return null;
+  }
+  // Backward compatibility with pre-flow records.
+  if (!pending.flow) {
+    return { ...pending, flow: "sign-in" };
+  }
+  return pending;
+}
+
+export async function setPendingOtp(
+  email: string,
+  flow: PendingOtpFlow,
+): Promise<void> {
   const pending: PendingOtp = {
     email,
     expiresAt: Date.now() + OTP_TTL_MS,
+    flow,
   };
   await browser.storage.local.set({ [constants.PENDING_OTP_KEY]: pending });
 }

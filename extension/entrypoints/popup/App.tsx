@@ -3,22 +3,29 @@ import type { Session } from "@supabase/supabase-js";
 import Dashboard from "@/components/popup/Dashboard";
 import { clearHistoryCache } from "@/lib/review/cache";
 import {
-  signInWithEmail,
+  requestSignInOtp,
+  requestSignUpOtp,
   signOut,
   supabaseAuth,
   verifyEmailOtp,
 } from "@/lib/supabase/auth";
 import {
   clearPendingOtp,
-  getPendingOtp,
+  getPendingOtpState,
+  type PendingOtpFlow,
   setPendingOtp,
 } from "@/lib/supabase/pending-otp";
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [authFlow, setAuthFlow] = useState<PendingOtpFlow>("sign-in");
+  const [pendingOtp, setPendingOtpState] = useState<{
+    email: string;
+    flow: PendingOtpFlow;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Gates the first render until session + persisted OTP state are read, so the
@@ -28,12 +35,12 @@ function App() {
   useEffect(() => {
     Promise.all([
       supabaseAuth.getSession(),
-      getPendingOtp(),
+      getPendingOtpState(),
     ])
       .then(([{ data }, pending]) => {
         setSession(data.session);
         // Only restore the verify form when not already signed in.
-        if (!data.session && pending) setPendingEmail(pending);
+        if (!data.session && pending) setPendingOtpState(pending);
       })
       .finally(() => setInitializing(false));
 
@@ -42,8 +49,9 @@ function App() {
         setSession(nextSession);
         if (nextSession) {
           void clearPendingOtp();
-          setPendingEmail(null);
+          setPendingOtpState(null);
           setEmail("");
+          setPassword("");
           setCode("");
           setError(null);
         } else {
@@ -58,14 +66,17 @@ function App() {
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || loading) return;
+    if (!email || !password || loading) return;
     setLoading(true);
     setError(null);
-    const result = await signInWithEmail(email);
+    const result =
+      authFlow === "sign-in"
+        ? await requestSignInOtp(email, password)
+        : await requestSignUpOtp(email, password);
     setLoading(false);
     if (result.success) {
-      await setPendingOtp(email);
-      setPendingEmail(email);
+      await setPendingOtp(email, authFlow);
+      setPendingOtpState({ email, flow: authFlow });
       setCode("");
     } else {
       setError(result.error?.message ?? "Failed to send code");
@@ -74,10 +85,14 @@ function App() {
 
   async function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault();
-    if (!pendingEmail || !code || loading) return;
+    if (!pendingOtp || !code || loading) return;
     setLoading(true);
     setError(null);
-    const result = await verifyEmailOtp(pendingEmail, code);
+    const result = await verifyEmailOtp(
+      pendingOtp.email,
+      code,
+      pendingOtp.flow === "sign-up" ? "signup" : "email",
+    );
     setLoading(false);
     if (!result.success) {
       setError(result.error?.message ?? "Invalid or expired code");
@@ -110,11 +125,14 @@ function App() {
     );
   }
 
-  if (pendingEmail) {
+  if (pendingOtp) {
     return (
       <div className="auth">
         <h1 className="auth-title">LeetLedger</h1>
-        <p>We sent a code to {pendingEmail}</p>
+        <p>
+          We sent a code to {pendingOtp.email}. Enter it to{" "}
+          {pendingOtp.flow === "sign-up" ? "finish creating your account" : "sign in"}.
+        </p>
         <form onSubmit={handleVerifyCode}>
           <input
             type="text"
@@ -134,7 +152,7 @@ function App() {
           type="button"
           onClick={() => {
             void clearPendingOtp();
-            setPendingEmail(null);
+            setPendingOtpState(null);
             setCode("");
             setError(null);
           }}
@@ -150,8 +168,20 @@ function App() {
   return (
     <div className="auth">
       <h1 className="auth-title">LeetLedger</h1>
-      <p className="auth-subtitle">Sign in to sync your reviews.</p>
+      <p className="auth-subtitle">
+        {authFlow === "sign-in"
+          ? "Sign in with your account password, then verify with OTP."
+          : "Create an account with a password, then verify with OTP."}
+      </p>
       <form onSubmit={handleSendCode}>
+        <select
+          value={authFlow}
+          onChange={(e) => setAuthFlow(e.target.value as PendingOtpFlow)}
+          disabled={loading}
+        >
+          <option value="sign-in">Sign in</option>
+          <option value="sign-up">Create account</option>
+        </select>
         <input
           type="email"
           placeholder="you@example.com"
@@ -161,8 +191,23 @@ function App() {
           autoFocus
           required
         />
-        <button type="submit" disabled={loading || !email}>
-          {loading ? "Sending…" : "Send code"}
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={loading}
+          autoComplete={
+            authFlow === "sign-up" ? "new-password" : "current-password"
+          }
+          required
+        />
+        <button type="submit" disabled={loading || !email || !password}>
+          {loading
+            ? "Sending…"
+            : authFlow === "sign-up"
+              ? "Create + send code"
+              : "Sign in + send code"}
         </button>
       </form>
       {error && <div className="auth-error" role="alert">{error}</div>}

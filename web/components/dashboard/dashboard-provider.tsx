@@ -16,7 +16,8 @@ import {
   loadLatestTimelineArchive,
   listDashboardReviews,
   readCachedReviews,
-  sendDashboardOtp,
+  requestDashboardSignInOtp,
+  requestDashboardSignUpOtp,
   signOutDashboard,
   subscribeToDashboardAuth,
   verifyDashboardOtp,
@@ -48,8 +49,13 @@ interface DashboardContextValue {
     | "error";
   dataError: string | null;
   loadArchive: (problemSlug: string) => Promise<SubmissionArchive | null>;
-  sendOtp: (email: string) => Promise<void>;
-  verifyOtp: (email: string, token: string) => Promise<void>;
+  requestSignInOtp: (email: string, password: string) => Promise<void>;
+  requestSignUpOtp: (email: string, password: string) => Promise<void>;
+  verifyOtp: (
+    email: string,
+    token: string,
+    type: "email" | "signup",
+  ) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -152,10 +158,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const closeProblem = useCallback(() => setSelectedProblem(null), []);
 
-  const sendOtp = useCallback(async (email: string) => {
+  const requestSignInOtp = useCallback(async (email: string, password: string) => {
     setDataError(null);
     try {
-      await sendDashboardOtp(email);
+      await requestDashboardSignInOtp(email, password);
     } catch (error) {
       const message = errorMessage(error);
       setDataError(message);
@@ -163,10 +169,25 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const verifyOtp = useCallback(async (email: string, token: string) => {
+  const requestSignUpOtp = useCallback(async (email: string, password: string) => {
     setDataError(null);
     try {
-      await verifyDashboardOtp(email, token);
+      await requestDashboardSignUpOtp(email, password);
+    } catch (error) {
+      const message = errorMessage(error);
+      setDataError(message);
+      throw new Error(message);
+    }
+  }, []);
+
+  const verifyOtp = useCallback(async (
+    email: string,
+    token: string,
+    type: "email" | "signup",
+  ) => {
+    setDataError(null);
+    try {
+      await verifyDashboardOtp(email, token, type);
     } catch (error) {
       const message = errorMessage(error);
       setDataError(message);
@@ -227,7 +248,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       dataStatus,
       dataError,
       loadArchive,
-      sendOtp,
+      requestSignInOtp,
+      requestSignUpOtp,
       verifyOtp,
       signOut,
     }),
@@ -241,8 +263,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       loadArchive,
       openProblem,
       problems,
+      requestSignInOtp,
+      requestSignUpOtp,
       selectedProblem,
-      sendOtp,
       sessionEmail,
       sessionUserId,
       setActiveProfileId,
