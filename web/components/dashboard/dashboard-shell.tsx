@@ -33,23 +33,17 @@ function ShellContent({ children }: { children: ReactNode }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [online, setOnline] = useState(true);
-  const [otpEmail, setOtpEmail] = useState("");
-  const [otpToken, setOtpToken] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
-  const [authMessage, setAuthMessage] = useState<string | null>(null);
   const {
     authConfigured,
     sessionEmail,
     dataStatus,
-    dataError,
-    sendOtp,
-    verifyOtp,
     signOut,
   } = useDashboard();
   const sidebar = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const account = useRef<HTMLDivElement>(null);
+  const isSignInRoute = pathname === "/signin";
   const title =
     navigation.find(({ href }) =>
       href === "/" ? pathname === "/" : pathname.startsWith(href),
@@ -75,6 +69,13 @@ function ShellContent({ children }: { children: ReactNode }) {
       window.removeEventListener("offline", onOffline);
     };
   }, []);
+
+  useEffect(() => {
+    if (!authConfigured || isSignInRoute) return;
+    if (dataStatus === "signed-out") {
+      router.replace("/signin");
+    }
+  }, [authConfigured, dataStatus, isSignInRoute, router]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -124,6 +125,7 @@ function ShellContent({ children }: { children: ReactNode }) {
   }, [accountOpen]);
 
   useEffect(() => {
+    if (isSignInRoute) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setAccountOpen(false);
       if (
@@ -140,7 +142,7 @@ function ShellContent({ children }: { children: ReactNode }) {
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [isSignInRoute]);
 
   function toggleCollapsed() {
     setCollapsed((value) => {
@@ -166,38 +168,33 @@ function ShellContent({ children }: { children: ReactNode }) {
     router.push(query ? `/problems?q=${encodeURIComponent(query)}` : "/problems");
   }
 
-  async function onAuthSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onSignOut() {
     setAuthBusy(true);
-    setAuthMessage(null);
     try {
-      if (!otpSent) {
-        await sendOtp(otpEmail.trim());
-        setOtpSent(true);
-        setAuthMessage("Check your email for the six-digit code.");
-      } else {
-        await verifyOtp(otpEmail.trim(), otpToken.trim());
-        setOtpToken("");
-        setOtpSent(false);
-        setAccountOpen(false);
-      }
-    } catch (error) {
-      setAuthMessage(
-        error instanceof Error ? error.message : "Authentication failed.",
-      );
+      window.sessionStorage.setItem("leetledger-signed-out", "1");
+      await signOut();
+      setAccountOpen(false);
+      router.replace("/signin");
     } finally {
       setAuthBusy(false);
     }
   }
 
-  async function onSignOut() {
-    setAuthBusy(true);
-    try {
-      await signOut();
-      setAccountOpen(false);
-    } finally {
-      setAuthBusy(false);
-    }
+  if (isSignInRoute) {
+    return <>{children}</>;
+  }
+
+  // Hold the dashboard until session resolves so signed-out users never
+  // briefly paint the shell before the /signin redirect.
+  if (
+    authConfigured &&
+    (dataStatus === "checking" || dataStatus === "signed-out")
+  ) {
+    return (
+      <div className="auth-gate" aria-busy="true" aria-live="polite">
+        <span className="sr-only">Checking your session…</span>
+      </div>
+    );
   }
 
   return (
@@ -343,65 +340,19 @@ function ShellContent({ children }: { children: ReactNode }) {
                     </button>
                   </>
                 ) : authConfigured ? (
-                  <form className="account-auth" onSubmit={onAuthSubmit}>
+                  <>
                     <div>
                       <strong>Sign in to sync</strong>
                       <span>Use the same email as the extension.</span>
                     </div>
-                    <label>
-                      <span>Email</span>
-                      <input
-                        type="email"
-                        required
-                        autoComplete="email"
-                        value={otpEmail}
-                        disabled={otpSent || authBusy}
-                        onChange={(event) => setOtpEmail(event.target.value)}
-                      />
-                    </label>
-                    {otpSent && (
-                      <label>
-                        <span>Six-digit code</span>
-                        <input
-                          type="text"
-                          required
-                          inputMode="numeric"
-                          autoComplete="one-time-code"
-                          pattern="[0-9]{6}"
-                          maxLength={6}
-                          value={otpToken}
-                          disabled={authBusy}
-                          onChange={(event) => setOtpToken(event.target.value)}
-                        />
-                      </label>
-                    )}
-                    {(authMessage || dataError) && (
-                      <p role="status">{authMessage ?? dataError}</p>
-                    )}
-                    <button
-                      type="submit"
-                      className="button primary"
-                      disabled={authBusy}
+                    <Link
+                      href="/signin"
+                      role="menuitem"
+                      onClick={() => setAccountOpen(false)}
                     >
-                      {authBusy
-                        ? "Working…"
-                        : otpSent
-                          ? "Verify code"
-                          : "Send code"}
-                    </button>
-                    {otpSent && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOtpSent(false);
-                          setOtpToken("");
-                          setAuthMessage(null);
-                        }}
-                      >
-                        Use a different email
-                      </button>
-                    )}
-                  </form>
+                      Go to sign in
+                    </Link>
+                  </>
                 ) : (
                   <div>
                     <strong>Supabase is not configured</strong>

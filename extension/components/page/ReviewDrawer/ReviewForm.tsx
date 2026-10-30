@@ -1,14 +1,27 @@
 import { useState } from "react";
 import { IoMdClose } from "react-icons/io";
+import { browser } from "wxt/browser";
 import Slider from "./Slider";
 import type { SubmissionPayload, TopicTag } from "@/types/submission";
-import { upsertReview } from "@/lib/review/repository";
+import { saveReview } from "@/lib/review/repository";
+import type { ReviewInput } from "@/lib/review/types";
 import {
   ASSISTANCE_OPTIONS,
   ASSISTANCE_SRS_WEIGHTS,
+  isAssistanceLevel,
   type AssistanceLevel,
 } from "@/lib/assistance/types";
+import constants from "@/constants";
 import "./ReviewDrawer.css";
+
+export interface ReviewFormPrefill {
+  mastery?: number;
+  assistance?: AssistanceLevel;
+  timeComplexity?: string;
+  spaceComplexity?: string;
+  notes?: string;
+  problemTitle?: string;
+}
 
 interface ReviewFormProps {
   /** Submission payload (problem slug, difficulty badge, etc.). */
@@ -18,6 +31,10 @@ interface ReviewFormProps {
   detectedAssistance?: AssistanceLevel;
   /** Called once the review is successfully saved (used to reset detection). */
   onSubmitted?: () => void;
+  /** Explicit skip / dismiss (persist incomplete + prompt gate). */
+  onSkip?: () => void;
+  /** Prefill when reopening an incomplete or cloud review. */
+  prefill?: ReviewFormPrefill;
 }
 
 const COMPLEXITY_OPTIONS = [
@@ -37,27 +54,56 @@ function titleFromSlug(slug: string | undefined): string {
     .join(" ");
 }
 
+function initialAssistance(
+  prefill: ReviewFormPrefill | undefined,
+  detected: AssistanceLevel | undefined,
+): AssistanceLevel {
+  if (prefill?.assistance && isAssistanceLevel(prefill.assistance)) {
+    return prefill.assistance;
+  }
+  return detected ?? "NONE";
+}
+
 export default function ReviewForm({
   submissionData,
   onCancel,
   detectedAssistance,
   onSubmitted,
+  onSkip,
+  prefill,
 }: ReviewFormProps) {
-  const [masteryLevel, setMasteryLevel] = useState(1);
-  const [assistanceLevel, setAssistanceLevel] = useState<AssistanceLevel>(
-    detectedAssistance ?? "NONE",
-  );
+  const assistanceSeed = initialAssistance(prefill, detectedAssistance);
+  const masteryCapSeed = ASSISTANCE_SRS_WEIGHTS[assistanceSeed];
 
-  const [timeComplexity, setTimeComplexity] = useState<string>("O(1)");
-  const [spaceComplexity, setSpaceComplexity] = useState<string>("O(1)");
+  const [masteryLevel, setMasteryLevel] = useState(() => {
+    const seed = prefill?.mastery ?? 1;
+    return Math.min(Math.max(1, Math.round(seed)), masteryCapSeed);
+  });
+  const [assistanceLevel, setAssistanceLevel] =
+    useState<AssistanceLevel>(assistanceSeed);
+
+  const [timeComplexity, setTimeComplexity] = useState<string>(
+    prefill?.timeComplexity && COMPLEXITY_OPTIONS.includes(prefill.timeComplexity)
+      ? prefill.timeComplexity
+      : "O(1)",
+  );
+  const [spaceComplexity, setSpaceComplexity] = useState<string>(
+    prefill?.spaceComplexity &&
+      COMPLEXITY_OPTIONS.includes(prefill.spaceComplexity)
+      ? prefill.spaceComplexity
+      : "O(1)",
+  );
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [offlineNotice, setOfflineNotice] = useState(false);
 
   // Topic tags arrive prefilled from LeetCode's GraphQL response and stay
   // read-only for now — the combobox UI lands in a follow-up.
   const [topicTags] = useState<TopicTag[]>(submissionData?.topicTags ?? []);
   const masteryCap = ASSISTANCE_SRS_WEIGHTS[assistanceLevel];
+  const problemTitle =
+    prefill?.problemTitle?.trim() || titleFromSlug(submissionData.problemSlug);
 
   const handleTimeComplexityChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
@@ -80,33 +126,46 @@ export default function ReviewForm({
     setAssistanceLevel(next);
     setMasteryLevel((current) => Math.min(current, nextCap));
   };
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(prefill?.notes ?? "");
   const handleNotesChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNotes(event.target.value);
   };
+
+  const buildInput = (): ReviewInput => ({
+    problemSlug: submissionData.problemSlug,
+    problemTitle,
+    difficulty: submissionData.difficulty,
+    mastery: masteryLevel,
+    assistance: assistanceLevel,
+    timeComplexity,
+    spaceComplexity,
+    topicTags,
+    questionId: submissionData.questionId
+      ? Number(submissionData.questionId)
+      : null,
+    notes,
+  });
 
   const handleSubmit = async () => {
     if (submitting) return;
     setSubmitting(true);
     setSubmitError(null);
+    setOfflineNotice(false);
 
-    const result = await upsertReview({
-      problemSlug: submissionData.problemSlug,
-      problemTitle: titleFromSlug(submissionData.problemSlug),
-      difficulty: submissionData.difficulty,
-      mastery: masteryLevel,
-      assistance: assistanceLevel,
-      timeComplexity,
-      spaceComplexity,
-      topicTags,
-      questionId: submissionData.questionId
-        ? Number(submissionData.questionId)
-        : null,
-      notes,
-    });
+    const result = await saveReview(buildInput());
 
     setSubmitting(false);
     if (result.success) {
+      if (result.offline) {
+        setOfflineNotice(true);
+        void browser.runtime.sendMessage({
+          type: constants.MESSAGE_TYPES.DRAIN_PENDING_SYNC,
+        });
+        onSubmitted?.();
+        // Brief offline confirmation before teardown.
+        window.setTimeout(() => onCancel(), 900);
+        return;
+      }
       onSubmitted?.();
       onCancel();
     } else {
@@ -114,9 +173,14 @@ export default function ReviewForm({
     }
   };
 
+  const handleClose = () => {
+    onSkip?.();
+    onCancel();
+  };
+
   return (
     <div className="review-drawer">
-      <IoMdClose className="close-icon" onClick={() => onCancel()} />
+      <IoMdClose className="close-icon" onClick={handleClose} />
       <div className="problem-header">
         <div className="badge-container">
           <div
@@ -129,7 +193,7 @@ export default function ReviewForm({
         <div className="problem-info">
           <h2>
             {submissionData.questionId ? `${submissionData.questionId}. ` : ""}
-            {titleFromSlug(submissionData.problemSlug)}
+            {problemTitle}
           </h2>
         </div>
       </div>
@@ -210,14 +274,29 @@ export default function ReviewForm({
           wrap="hard"
         />
       </div>
+      {offlineNotice && (
+        <p className="submit-offline" role="status">
+          Saved offline — will sync when you&apos;re back online.
+        </p>
+      )}
       {submitError && (
         <p className="submit-error" role="alert">
           {submitError}
         </p>
       )}
-      <button onClick={handleSubmit} disabled={submitting}>
-        {submitting ? "Saving…" : "Submit"}
-      </button>
+      <div className="review-actions">
+        <button
+          type="button"
+          className="review-skip"
+          onClick={handleClose}
+          disabled={submitting}
+        >
+          Skip
+        </button>
+        <button type="button" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? "Saving…" : "Submit"}
+        </button>
+      </div>
     </div>
   );
 }

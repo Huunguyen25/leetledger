@@ -1,4 +1,5 @@
 import constants from "@/constants";
+import { cleanupLocalIdentityData } from "@/background/identity-cleanup";
 import type {
   IdentityReportMessage,
   IdentityReportResponse,
@@ -39,6 +40,16 @@ async function persistSnapshot(snapshot: IdentitySnapshot): Promise<void> {
   await browser.storage.local.set({ [constants.IDENTITY_KEY]: snapshot });
 }
 
+function asTimelineIdentity(
+  snapshot: IdentitySnapshot,
+): { supabaseUid: string; leetcodeUsername: string } | null {
+  if (!snapshot.supabaseUid || !snapshot.leetcodeUsername) return null;
+  return {
+    supabaseUid: snapshot.supabaseUid,
+    leetcodeUsername: snapshot.leetcodeUsername,
+  };
+}
+
 export function getActiveIdentity(): IdentitySnapshot | null {
   if (cachedSnapshot?.state === "active") {
     return cachedSnapshot;
@@ -65,29 +76,31 @@ async function handleIdentityReport(
     typeof supabaseUid === "string" &&
     supabaseUid.length > 0;
 
+  const previous = cachedSnapshot;
+  const previousIdentity =
+    previous?.state === "active" ? asTimelineIdentity(previous) : null;
+
   if (!isFullySignedIn) {
+    if (previousIdentity) {
+      tracker.clearProcessing();
+      await tracker.clearAll();
+      await cleanupLocalIdentityData(previousIdentity);
+    }
     const snapshot = buildSnapshot("inactive", leetcodeUsername, supabaseUid);
     await persistSnapshot(snapshot);
     return { state: "inactive" };
   }
 
-  const previous = cachedSnapshot;
-  const hasPreviousActive =
-    previous?.state === "active" &&
-    previous.leetcodeUsername &&
-    previous.supabaseUid;
+  const hasPreviousActive = Boolean(previousIdentity);
 
   if (
     hasPreviousActive &&
-    !identitiesMatch(
-      {
-        leetcodeUsername: previous.leetcodeUsername!,
-        supabaseUid: previous.supabaseUid!,
-      },
-      { leetcodeUsername, supabaseUid },
-    )
+    previousIdentity &&
+    !identitiesMatch(previousIdentity, { leetcodeUsername, supabaseUid })
   ) {
     tracker.clearProcessing();
+    await tracker.clearAll();
+    await cleanupLocalIdentityData(previousIdentity);
     const snapshot = buildSnapshot(
       "account_changed",
       leetcodeUsername,

@@ -18,6 +18,8 @@ export interface SubmissionPayload {
 /** Shape stored in browser.storage.local */
 export interface SubmissionStorageValue {
   data: SubmissionPayload;
+  /** Epoch ms when the SW wrote this handoff; used for TTL sweeps. */
+  writtenAt?: number;
 }
 
 export interface SubmissionInterceptedMessage {

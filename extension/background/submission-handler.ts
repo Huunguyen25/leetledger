@@ -14,20 +14,38 @@ type SubmissionTracker = ReturnType<typeof createSubmissionTracker>;
  * Result keys are namespaced by a per-page-session clientId and are normally
  * removed the moment the live content script consumes the storage.onChanged
  * event. If a tab is closed/reloaded before consuming one, its key is orphaned
- * (no future client shares that clientId). Sweep them on service-worker startup
- * so browser.storage.local doesn't grow without bound.
+ * (no future client shares that clientId). Sweep only TTL-expired keys on
+ * service-worker startup so a recent Accepted handoff survives SW restarts.
  */
-export async function clearStaleResults(): Promise<void> {
+export async function clearStaleResults(
+  now = Date.now(),
+  ttlMs = constants.RESULT_TTL_MS,
+): Promise<string[]> {
   try {
     const all = await browser.storage.local.get();
-    const staleKeys = Object.keys(all).filter((key) =>
-      key.startsWith(constants.STORAGE_PREFIX),
-    );
+    const staleKeys: string[] = [];
+
+    for (const [key, value] of Object.entries(all)) {
+      if (!key.startsWith(constants.STORAGE_PREFIX)) continue;
+      const writtenAt =
+        value &&
+        typeof value === "object" &&
+        typeof (value as SubmissionStorageValue).writtenAt === "number"
+          ? (value as SubmissionStorageValue).writtenAt
+          : 0;
+      // Legacy keys without writtenAt are treated as already stale.
+      if (!writtenAt || now - writtenAt > ttlMs) {
+        staleKeys.push(key);
+      }
+    }
+
     if (staleKeys.length > 0) {
       await browser.storage.local.remove(staleKeys);
     }
+    return staleKeys;
   } catch (err) {
     console.error("Failed to clear stale results:", err);
+    return [];
   }
 }
 
@@ -64,7 +82,16 @@ export function registerSubmissionHandler(tracker: SubmissionTracker) {
       return;
     }
 
-    const { submissionData, problemSlug, clientId, attemptId, difficulty, typedCode, lang, topicTags } = message;
+    const {
+      submissionData,
+      problemSlug,
+      clientId,
+      attemptId,
+      difficulty,
+      typedCode,
+      lang,
+      topicTags,
+    } = message;
 
     if (!clientId || !attemptId) {
       console.warn("⚠️ Missing clientId or attemptId in SUBMISSION_RESULT");
@@ -77,7 +104,7 @@ export function registerSubmissionHandler(tracker: SubmissionTracker) {
     }
 
     if (tracker.isDuplicate(attemptId)) return;
-    
+
     tracker.startProcessing(attemptId);
 
     if (
@@ -100,6 +127,7 @@ export function registerSubmissionHandler(tracker: SubmissionTracker) {
         lang,
         topicTags,
       ),
+      writtenAt: Date.now(),
     };
 
     browser.storage.local

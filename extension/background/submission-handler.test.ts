@@ -35,6 +35,7 @@ describe("submission handler boundary", () => {
         },
       },
     });
+    vi.resetModules();
   });
 
   afterEach(() => {
@@ -81,20 +82,60 @@ describe("submission handler boundary", () => {
       },
     });
 
-    await vi.waitFor(() => expect(storageSet).toHaveBeenCalledOnce());
-    expect(storageSet).toHaveBeenCalledWith({
-      [`${constants.STORAGE_PREFIX}client-1:123`]: {
-        data: {
-          status: "Accepted",
-          problemSlug: "two-sum",
-          difficulty: "Easy",
-          questionId: "1",
-          code: "return [0, 1]",
-          lang: "typescript",
-          topicTags: [{ name: "Array", slug: "array" }],
+    await vi.waitFor(() =>
+      expect(storageSet).toHaveBeenCalledWith({
+        [`${constants.STORAGE_PREFIX}client-1:123`]: {
+          data: {
+            status: "Accepted",
+            problemSlug: "two-sum",
+            difficulty: "Easy",
+            questionId: "1",
+            code: "return [0, 1]",
+            lang: "typescript",
+            topicTags: [{ name: "Array", slug: "array" }],
+          },
+          writtenAt: expect.any(Number),
         },
-      },
+      }),
+    );
+  });
+
+  it("dedupes the same attemptId across two client tabs", async () => {
+    getActiveIdentity.mockReturnValue({
+      state: "active",
+      leetcodeUsername: "alice",
+      supabaseUid: "user-1",
+      updatedAt: Date.now(),
     });
+    const tracker = createSubmissionTracker();
+    const { registerSubmissionHandler } = await import("./submission-handler");
+    registerSubmissionHandler(tracker);
+
+    const message = {
+      type: constants.MESSAGE_TYPES.SUBMISSION_RESULT,
+      attemptId: "555",
+      problemSlug: "two-sum",
+      difficulty: "Easy",
+      submissionData: { status_msg: "Accepted" },
+    };
+
+    runtimeListener?.({ ...message, clientId: "tab-a" });
+    runtimeListener?.({ ...message, clientId: "tab-b" });
+
+    await vi.waitFor(() =>
+      expect(storageSet).toHaveBeenCalledWith({
+        [`${constants.STORAGE_PREFIX}tab-a:555`]: expect.objectContaining({
+          data: expect.objectContaining({ status: "Accepted" }),
+        }),
+      }),
+    );
+    expect(
+      storageSet.mock.calls.filter(([payload]) =>
+        Object.keys(payload as object).some((key) =>
+          key.startsWith(constants.STORAGE_PREFIX),
+        ),
+      ),
+    ).toHaveLength(1);
   });
 
   it("cancels rejected submissions so a later result can be processed", async () => {

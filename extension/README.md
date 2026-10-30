@@ -9,6 +9,13 @@ Browser extension (WXT + React) for **leetcode.com**. When you get an **Accepted
 - **Background** — Validates and deduplicates submissions, then coordinates extension storage.
 - **Popup** — Small dashboard for recent activity and review reminders.
 
+Durability notes:
+
+- Accepted handoffs (`ll_result:*`) keep a `writtenAt` TTL; SW wake only sweeps expired keys.
+- Processed `attemptId`s and pending review upserts live in `browser.storage.local` and flush on SW start / `online`.
+- Dismissed or incomplete reviews reopen from the popup (“Complete” / “Edit review”).
+- Account change / sign-out deletes that identity’s IndexedDB timelines and clears local review caches.
+
 
 
 ## Code organization
@@ -88,7 +95,7 @@ fetch bridge → content controller → background worker → storage
 - [x] fix form to not open/archive a new session when Submit/Accept matches the latest closed head for that scope. Thus subsequent submits with exact solution is excluded. 
 - [ ] run a db clear logic to remove old timeline submission on browswer startup.
 - [ ] lookup latest session, attach to reviews, upsert that reviews with the latest session
-- [ ] Skipped reviews can be completed from the popup or history.
+- [x] Skipped reviews can be completed from the popup or history.
 
 
 
@@ -121,7 +128,7 @@ npm run dev
 
 Load the unpacked build Chrome reports (usually under `.output/` after `wxt dev` starts; pick the dev folder the CLI prints).
 
-Other scripts: `npm run build`, `npm run compile`, `npm test`. Firefox: `npm run dev:firefox` / `npm run build:firefox`.
+Other scripts: `npm run build`, `npm run compile`, `npm test`. Firefox: `npm run dev:firefox` / `npm run build:firefox`. CI runs compile, tests, and both Chrome + Firefox production builds (`.github/workflows/ci.yml`).
 
 ## viewing indexedDB dumb for active elements
 

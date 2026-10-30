@@ -516,6 +516,96 @@ select:focus-visible {
   background: var(--surface-2);
 }
 
+.auth-gate {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.signin-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 28px 18px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, var(--accent-soft), transparent),
+    var(--bg);
+}
+
+.signin-panel {
+  display: grid;
+  gap: 14px;
+  width: min(420px, 100%);
+  padding: 28px 26px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.signin-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.signin-panel h1 {
+  margin: 0;
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
+}
+
+.signin-lead {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.signin-notice {
+  margin: 0;
+}
+
+.signin-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.signin-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.signin-form input {
+  width: 100%;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.signin-form input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.signin-form p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.signin-form .button {
+  width: 100%;
+  justify-content: center;
+}
+
 .route-host,
 .content,
 .stack {
@@ -1255,6 +1345,12 @@ select:focus-visible {
 
 .notice strong {
   color: var(--text);
+}
+
+.notice a {
+  color: var(--accent-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .notice code {

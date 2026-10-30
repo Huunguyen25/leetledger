@@ -60,8 +60,9 @@ export function DashboardDataNotice() {
   } else if (dataStatus === "signed-out") {
     notice = (
       <div className="notice data-notice">
-        <strong>Sign in to load your LeetLedger data.</strong> Open the account
-        menu in the top-right and use the same email as the extension.
+        <strong>Sign in to load your LeetLedger data.</strong>{" "}
+        <Link href="/signin">Go to the sign-in page</Link> and use the same
+        email as the extension.
       </div>
     );
   } else if (dataStatus === "unconfigured") {

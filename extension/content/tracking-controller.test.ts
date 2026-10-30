@@ -61,6 +61,25 @@ vi.mock("@/lib/review/mute", () => ({
   isMuted: mocks.isMuted,
 }));
 
+vi.mock("@/lib/review/open-request", () => ({
+  consumeOpenReviewRequest: vi.fn(async () => null),
+}));
+
+vi.mock("@/lib/review/prompt-gate", () => ({
+  claimReviewPrompt: vi.fn(async () => ({ open: true })),
+  markReviewCompleted: vi.fn(async () => undefined),
+  markReviewSkipped: vi.fn(async () => undefined),
+  releaseReviewClaim: vi.fn(async () => undefined),
+}));
+
+vi.mock("@/lib/review/incomplete", () => ({
+  upsertIncompleteReview: vi.fn(async () => undefined),
+}));
+
+vi.mock("@/lib/review/result-handoff", () => ({
+  listPendingResultsForProblem: vi.fn(async () => []),
+}));
+
 describe("tracking controller page-message boundary", () => {
   beforeEach(() => {
     vi.clearAllMocks();

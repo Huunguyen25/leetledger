@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import {
+  getReview,
   listReviewsCached,
   type SolvedReview,
 } from "@/lib/review/repository";
+import {
+  listIncompleteReviews,
+  type IncompleteReview,
+} from "@/lib/review/incomplete";
+import { requestReviewOnProblem } from "@/lib/review/open-request";
 import "./SolvedHistory.css";
 
 interface SolvedHistoryProps {
@@ -35,13 +41,20 @@ function formatDate(value: string | null): string {
 export default function SolvedHistory({ userId }: SolvedHistoryProps) {
   const [state, setState] = useState<HistoryState>({ status: "loading" });
   const [activeIndex, setActiveIndex] = useState(0);
+  const [incomplete, setIncomplete] = useState<IncompleteReview[]>([]);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busySlug, setBusySlug] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
     const load = async () => {
-      const result = await listReviewsCached(userId);
+      const [result, incompleteRows] = await Promise.all([
+        listReviewsCached(userId),
+        listIncompleteReviews(),
+      ]);
       if (!active) return;
+      setIncomplete(incompleteRows);
 
       if (result.success) {
         setState({
@@ -107,6 +120,77 @@ export default function SolvedHistory({ userId }: SolvedHistoryProps) {
     }
   };
 
+  const openIncomplete = async (row: IncompleteReview) => {
+    setActionError(null);
+    setBusySlug(row.problemSlug);
+    try {
+      await requestReviewOnProblem({
+        problemSlug: row.problemSlug,
+        submissionData: row.submissionData,
+        draft: row.draft,
+      });
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Failed to open review",
+      );
+    } finally {
+      setBusySlug(null);
+    }
+  };
+
+  const openEdit = async (review: SolvedReview) => {
+    setActionError(null);
+    setBusySlug(review.problemSlug);
+    try {
+      const full = await getReview(review.problemSlug);
+      const topicTags =
+        full.success && full.review.topicTags
+          ? full.review.topicTags.map((slug) => ({
+              slug,
+              name: slug,
+            }))
+          : undefined;
+
+      await requestReviewOnProblem({
+        problemSlug: review.problemSlug,
+        submissionData: {
+          status: "Accepted",
+          problemSlug: review.problemSlug,
+          difficulty: review.difficulty,
+          questionId:
+            review.questionId != null ? String(review.questionId) : undefined,
+          topicTags,
+        },
+        existing: full.success
+          ? {
+              problemSlug: full.review.problemSlug,
+              problemTitle: full.review.problemTitle,
+              difficulty: full.review.difficulty,
+              mastery: full.review.mastery,
+              assistance: full.review.assistance,
+              timeComplexity: full.review.timeComplexity ?? undefined,
+              spaceComplexity: full.review.spaceComplexity ?? undefined,
+              notes: full.review.notes ?? undefined,
+              questionId: full.review.questionId,
+            }
+          : {
+              problemSlug: review.problemSlug,
+              problemTitle: review.problemTitle,
+              difficulty: review.difficulty,
+              mastery: review.mastery,
+              assistance: "NONE",
+              questionId: review.questionId,
+            },
+      });
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Failed to open review",
+      );
+    } finally {
+      setBusySlug(null);
+    }
+  };
+
   return (
     <section className="panel history-panel">
       <div className="history-panel-header">
@@ -124,6 +208,27 @@ export default function SolvedHistory({ userId }: SolvedHistoryProps) {
         <p className="history-error" role="alert">
           {state.error}
         </p>
+      )}
+
+      {incomplete.length > 0 && (
+        <div className="history-incomplete">
+          <p className="history-incomplete-label">Incomplete reviews</p>
+          <ul>
+            {incomplete.map((row) => (
+              <li key={row.problemSlug}>
+                <span>{row.problemSlug}</span>
+                <button
+                  type="button"
+                  className="history-action"
+                  disabled={busySlug === row.problemSlug}
+                  onClick={() => void openIncomplete(row)}
+                >
+                  {busySlug === row.problemSlug ? "Opening…" : "Complete"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {reviews.length === 0 && state.status === "ready" && (
@@ -182,6 +287,14 @@ export default function SolvedHistory({ userId }: SolvedHistoryProps) {
               <div className="history-meta">
                 <span>Next review {formatDate(selected.nextReviewDate)}</span>
               </div>
+              <button
+                type="button"
+                className="history-action"
+                disabled={busySlug === selected.problemSlug}
+                onClick={() => void openEdit(selected)}
+              >
+                {busySlug === selected.problemSlug ? "Opening…" : "Edit review"}
+              </button>
               {state.status === "error" && (
                 <p className="history-error" role="alert">
                   {state.error}
@@ -190,6 +303,12 @@ export default function SolvedHistory({ userId }: SolvedHistoryProps) {
             </div>
           )}
         </>
+      )}
+
+      {actionError && (
+        <p className="history-error" role="alert">
+          {actionError}
+        </p>
       )}
     </section>
   );

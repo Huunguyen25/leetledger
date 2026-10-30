@@ -27,7 +27,28 @@ export interface SolvedReview {
 }
 
 export type ReviewResult =
-  | { success: true }
+  | { success: true; offline?: false }
+  | { success: true; offline: true }
+  | { success: false; error: string };
+
+/** Full review row used when reopening / editing from history. */
+export interface StoredReview {
+  problemSlug: string;
+  problemTitle: string;
+  difficulty: string;
+  mastery: number;
+  assistance: AssistanceLevel;
+  timeComplexity: string | null;
+  spaceComplexity: string | null;
+  topicTags: string[] | null;
+  questionId: number | null;
+  notes: string | null;
+  lastSolvedAt: string | null;
+  nextReviewDate: string | null;
+}
+
+export type GetReviewResult =
+  | { success: true; review: StoredReview }
   | { success: false; error: string };
 
 export type ListReviewsResult =

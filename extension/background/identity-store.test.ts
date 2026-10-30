@@ -2,6 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import constants from "@/constants";
 import { createSubmissionTracker } from "./submission-tracker";
 
+const { cleanupLocalIdentityData } = vi.hoisted(() => ({
+  cleanupLocalIdentityData: vi.fn(async () => undefined),
+}));
+
+vi.mock("@/background/identity-cleanup", () => ({
+  cleanupLocalIdentityData,
+}));
+
 type RuntimeListener = (
   message: unknown,
   sender: unknown,
@@ -16,6 +24,7 @@ describe("identity store boundary", () => {
 
   beforeEach(() => {
     vi.resetModules();
+    cleanupLocalIdentityData.mockClear();
     stored = {};
     storageGet = vi.fn(async (key?: string) =>
       key ? { [key]: stored[key] } : { ...stored },
@@ -29,6 +38,11 @@ describe("identity store boundary", () => {
         local: {
           get: storageGet,
           set: storageSet,
+          remove: vi.fn(async (key: string | string[]) => {
+            for (const item of Array.isArray(key) ? key : [key]) {
+              delete stored[item];
+            }
+          }),
         },
       },
       runtime: {
@@ -65,6 +79,7 @@ describe("identity store boundary", () => {
   it("persists active identity and detects account changes", async () => {
     const tracker = createSubmissionTracker();
     const clearProcessing = vi.spyOn(tracker, "clearProcessing");
+    const clearAll = vi.spyOn(tracker, "clearAll");
     const { registerIdentityStore, getActiveIdentity } = await import(
       "./identity-store"
     );
@@ -91,6 +106,11 @@ describe("identity store boundary", () => {
       }),
     ).resolves.toEqual({ state: "account_changed" });
     expect(clearProcessing).toHaveBeenCalledOnce();
+    expect(clearAll).toHaveBeenCalledOnce();
+    expect(cleanupLocalIdentityData).toHaveBeenCalledWith({
+      supabaseUid: "user-1",
+      leetcodeUsername: "alice",
+    });
     expect(getActiveIdentity()).toBeNull();
     expect(storageSet).toHaveBeenLastCalledWith({
       [constants.IDENTITY_KEY]: expect.objectContaining({
@@ -98,6 +118,29 @@ describe("identity store boundary", () => {
         leetcodeUsername: "bob",
         supabaseUid: "user-2",
       }),
+    });
+  });
+
+  it("wipes prior identity data on sign-out", async () => {
+    const tracker = createSubmissionTracker();
+    const { registerIdentityStore } = await import("./identity-store");
+    registerIdentityStore(tracker);
+    await vi.waitFor(() => expect(storageGet).toHaveBeenCalled());
+
+    await reportIdentity({
+      leetcodeUsername: "alice",
+      supabaseUid: "user-1",
+    });
+    await expect(
+      reportIdentity({
+        leetcodeUsername: "alice",
+        supabaseUid: null,
+      }),
+    ).resolves.toEqual({ state: "inactive" });
+
+    expect(cleanupLocalIdentityData).toHaveBeenCalledWith({
+      supabaseUid: "user-1",
+      leetcodeUsername: "alice",
     });
   });
 
@@ -117,6 +160,7 @@ describe("identity store boundary", () => {
       }),
     ).resolves.toEqual({ state: "inactive" });
     expect(getActiveIdentity()).toBeNull();
+    expect(cleanupLocalIdentityData).not.toHaveBeenCalled();
     expect(storageSet).toHaveBeenLastCalledWith({
       [constants.IDENTITY_KEY]: expect.objectContaining({
         state: "inactive",

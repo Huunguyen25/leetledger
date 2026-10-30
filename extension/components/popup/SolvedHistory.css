@@ -133,3 +133,49 @@
   font-size: 0.76rem;
   color: var(--ll-muted);
 }
+
+.history-incomplete {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.history-incomplete-label {
+  margin: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ll-muted);
+}
+
+.history-incomplete ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.history-incomplete li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.history-action {
+  flex-shrink: 0;
+  border: 1px solid var(--ll-border);
+  background: transparent;
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.history-action:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

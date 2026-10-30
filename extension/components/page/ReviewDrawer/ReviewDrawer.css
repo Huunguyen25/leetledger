@@ -70,3 +70,31 @@
   max-width: 100%;
   min-width: 100%;
 }
+
+.submit-error {
+  color: #b42318;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
+
+.submit-offline {
+  color: #175cd3;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
+
+.review-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.review-actions button {
+  flex: 1;
+}
+
+.review-skip {
+  background: transparent;
+  border: 1px solid #d0d5dd;
+  color: #344054;
+}

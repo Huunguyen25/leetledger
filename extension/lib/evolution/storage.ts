@@ -12,7 +12,11 @@ import { checksumCode } from "./timeline";
  */
 
 const DB_NAME = "LeetLedgerLocal";
-const DB_VERSION = 1;
+/**
+ * Bump when object-store shape changes. `upgrade()` must handle every step
+ * from `oldVersion` → `DB_VERSION` (create-if-missing for v0→1; transforms later).
+ */
+export const DB_VERSION = 1;
 const STORE = "timelines";
 
 export interface TimelineIdentity {
@@ -57,17 +61,38 @@ function promisify<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
-function upgrade(db: IDBDatabase): void {
-  if (db.objectStoreNames.contains(STORE)) return;
+/**
+ * Applies schema transforms for each version step. When bumping `DB_VERSION`,
+ * add a new `if (oldVersion < N)` block that creates indexes / rewrites rows
+ * via `transaction`, and keep older steps so installs from any prior version
+ * still land on the current schema.
+ */
+export function upgradeTimelineDb(
+  db: IDBDatabase,
+  oldVersion: number,
+  _newVersion: number,
+  transaction?: IDBTransaction,
+): void {
+  if (oldVersion < 1) {
+    if (!db.objectStoreNames.contains(STORE)) {
+      const store = db.createObjectStore(STORE, { keyPath: "id" });
+      store.createIndex("identityKey", "identityKey");
+      store.createIndex("problemSlug", "problemSlug");
+      store.createIndex("submissionId", "submissionId");
+      store.createIndex("updatedAt", "updatedAt");
+      // Only active records carry activeScopeKey, so this unique index both finds
+      // and enforces the single active session per identity/problem/language.
+      store.createIndex("activeScopeKey", "activeScopeKey", { unique: true });
+    }
+  }
 
-  const store = db.createObjectStore(STORE, { keyPath: "id" });
-  store.createIndex("identityKey", "identityKey");
-  store.createIndex("problemSlug", "problemSlug");
-  store.createIndex("submissionId", "submissionId");
-  store.createIndex("updatedAt", "updatedAt");
-  // Only active records carry activeScopeKey, so this unique index both finds
-  // and enforces the single active session per identity/problem/language.
-  store.createIndex("activeScopeKey", "activeScopeKey", { unique: true });
+  // Example when DB_VERSION becomes 2:
+  // if (oldVersion < 2) {
+  //   const store = transaction?.objectStore(STORE) ?? db.transaction(STORE, "readwrite").objectStore(STORE);
+  //   // createIndex / cursor.put migrations for schemaVersion 1 → 2
+  //   void store;
+  // }
+  void transaction;
 }
 
 export function openTimelineDb(): Promise<IDBDatabase> {
@@ -76,7 +101,13 @@ export function openTimelineDb(): Promise<IDBDatabase> {
   dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = () => upgrade(request.result);
+    request.onupgradeneeded = (event) =>
+      upgradeTimelineDb(
+        request.result,
+        event.oldVersion,
+        event.newVersion ?? DB_VERSION,
+        request.transaction ?? undefined,
+      );
     request.onerror = () => reject(request.error);
     request.onblocked = () =>
       reject(new Error("LeetLedger timeline upgrade blocked by another tab"));

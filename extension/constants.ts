@@ -14,8 +14,15 @@ const constants = {
     SESSION_ACCEPTED: "SESSION_ACCEPTED",
     /** Content-script -> background: merge one slug→questionId into storage. */
     PERSIST_QUESTION_ID: "PERSIST_QUESTION_ID",
+    /** Any runtime -> background: flush pending archives and reviews. */
+    DRAIN_PENDING_SYNC: "DRAIN_PENDING_SYNC",
   } as const,
   STORAGE_PREFIX: "ll_result:",
+  /**
+   * Unconsumed Accepted handoffs older than this are swept on SW wake.
+   * Fresh keys survive restarts so the content script can still open the form.
+   */
+  RESULT_TTL_MS: 60 * 60 * 1000,
   /**
    * Storage key holding the epoch-ms timestamp until which the on-page review
    * drawer is suppressed. Shared so the popup can write it and the content
@@ -34,6 +41,32 @@ const constants = {
    * See `lib/review/cache.ts`.
    */
   HISTORY_CACHE_KEY: "ll_history_cache",
+  /**
+   * Reviews queued after offline / transient upsert failures. Flushed by the
+   * shared pending-sync drain. See `lib/review/pending.ts`.
+   */
+  PENDING_REVIEWS_KEY: "ll_pending_reviews",
+  /**
+   * Persisted Accepted attemptIds so SW restarts and multi-tab races do not
+   * reprocess the same submission. See `background/submission-tracker.ts`.
+   */
+  PROCESSED_ATTEMPTS_KEY: "ll_processed_attempts",
+  /**
+   * Per-problem prompt gate: recent completes, skips, and open claims used to
+   * keep Accepted → at most one review drawer (including across tabs).
+   * See `lib/review/prompt-gate.ts`.
+   */
+  REVIEW_PROMPT_GATE_KEY: "ll_review_prompt_gate",
+  /**
+   * Incomplete / skipped reviews that can be reopened from the popup.
+   * See `lib/review/incomplete.ts`.
+   */
+  INCOMPLETE_REVIEWS_KEY: "ll_incomplete_reviews",
+  /**
+   * One-shot request from the popup to open ReviewForm on a problem page.
+   * See `lib/review/open-request.ts`.
+   */
+  OPEN_REVIEW_REQUEST_KEY: "ll_open_review",
   /**
    * Canonical identity snapshot (state, usernames, timestamps). Written by the
    * background identity store; read by content scripts and future sync features.

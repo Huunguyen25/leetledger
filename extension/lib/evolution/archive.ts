@@ -22,8 +22,77 @@ import { checksumCode, reconstructCode, verifyTimelineIntegrity } from "./timeli
  * cleared. Local data is only ever marked archived after a confirmed upload.
  */
 
-const ARCHIVE_VERSION = 1;
+export const ARCHIVE_VERSION = 1;
 const ARCHIVE_CONTENT_TYPE = "application/gzip";
+
+/**
+ * Upgrades an on-disk archive to the current `ARCHIVE_VERSION`, or soft-rejects
+ * with a clear reason when the version is unknown / unsupported.
+ */
+export type ArchiveUpgradeResult =
+  | { ok: true; archive: TimelineArchive }
+  | {
+      ok: false;
+      reason: "unsupported_version" | "corrupt_archive";
+      message: string;
+    };
+
+/**
+ * Step-up transforms keyed by *source* version. When bumping ARCHIVE_VERSION,
+ * add `N: (archive) => next` for every prior version still found in Storage,
+ * and keep reading those payloads until the chain reaches ARCHIVE_VERSION.
+ */
+const ARCHIVE_MIGRATIONS: Record<
+  number,
+  (archive: TimelineArchive) => TimelineArchive
+> = {
+  // Example when ARCHIVE_VERSION becomes 2:
+  // 1: (archive) => ({ ...archive, archiveVersion: 2, /* field renames */ }),
+};
+
+export function upgradeArchive(value: unknown): ArchiveUpgradeResult {
+  if (!value || typeof value !== "object") {
+    return {
+      ok: false,
+      reason: "corrupt_archive",
+      message: "Archive payload is missing or not an object",
+    };
+  }
+
+  let archive = value as TimelineArchive;
+  let version = archive.archiveVersion;
+
+  if (typeof version !== "number" || !Number.isFinite(version)) {
+    return {
+      ok: false,
+      reason: "corrupt_archive",
+      message: "Archive is missing archiveVersion",
+    };
+  }
+
+  while (version < ARCHIVE_VERSION) {
+    const migrate = ARCHIVE_MIGRATIONS[version];
+    if (!migrate) {
+      return {
+        ok: false,
+        reason: "unsupported_version",
+        message: `Archive version ${version} cannot step up to ${ARCHIVE_VERSION} (missing migrator). Re-download after upgrading LeetLedger, or restore from a newer backup.`,
+      };
+    }
+    archive = migrate(archive);
+    version = archive.archiveVersion;
+  }
+
+  if (version !== ARCHIVE_VERSION) {
+    return {
+      ok: false,
+      reason: "unsupported_version",
+      message: `Archive version ${version} is newer than this extension (current=${ARCHIVE_VERSION}). Update LeetLedger to restore it.`,
+    };
+  }
+
+  return { ok: true, archive };
+}
 
 export type ArchiveResult =
   | { ok: true; storagePath: string; checksum: string }
@@ -224,10 +293,10 @@ export function validateArchive(
   value: unknown,
   identity: TimelineIdentity,
 ): TimelineArchive | null {
-  if (!value || typeof value !== "object") return null;
-  const archive = value as TimelineArchive;
+  const upgraded = upgradeArchive(value);
+  if (!upgraded.ok) return null;
+  const archive = upgraded.archive;
 
-  if (archive.archiveVersion !== ARCHIVE_VERSION) return null;
   if (
     archive.identity?.supabaseUid !== identity.supabaseUid ||
     archive.identity?.leetcodeUsername !== identity.leetcodeUsername
