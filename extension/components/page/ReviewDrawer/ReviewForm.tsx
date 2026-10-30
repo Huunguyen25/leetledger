@@ -200,7 +200,7 @@ export default function ReviewForm({
       <div className="complexity-metrics">
         <div className="complexity-wrapper">
           <div className="time-options">
-            <p>Time Complexity: </p>
+            <p>Time</p>
             <select value={timeComplexity} onChange={handleTimeComplexityChange}>
               {COMPLEXITY_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -210,7 +210,7 @@ export default function ReviewForm({
             </select>
           </div>
           <div className="space-options">
-            <p>Space Complexity: </p>
+            <p>Space</p>
             <select
               value={spaceComplexity}
               onChange={handleSpaceComplexityChange}
@@ -225,7 +225,7 @@ export default function ReviewForm({
         </div>
       </div>
       <div className="mastery-slider">
-        <p>Mastery Level:</p>
+        <p>Mastery</p>
         <Slider
           value={masteryLevel}
           onChange={handleMasteryLevelChange}
@@ -235,9 +235,9 @@ export default function ReviewForm({
       </div>
       <div className="assistance-level">
         <p>
-          Assistance Level
+          Assistance
           {detectedAssistance && detectedAssistance !== "NONE" && (
-            <span className="assistance-detected"> (auto-detected)</span>
+            <span className="assistance-detected">auto-detected</span>
           )}
         </p>
         <select
@@ -254,9 +254,9 @@ export default function ReviewForm({
       <div className="topic-tags">
         <p>Topics</p>
         {topicTags.length === 0 ? (
-          <p>—</p>
+          <p className="topic-tags-empty">—</p>
         ) : (
-          <div>
+          <div className="topic-tags-list">
             {topicTags.map((tag) => (
               <span key={tag.slug} className="topic-tag">
                 {tag.name}

@@ -1,5 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import constants from "@/constants";
+import { maskEmail } from "@/lib/identity/mask-email";
 import MuteControl from "./MuteControl";
 import SolvedHistory from "./SolvedHistory";
 import "./Dashboard.css";
@@ -19,14 +20,17 @@ export default function Dashboard({
   const openDashboard = () => {
     window.open(constants.DASHBOARD_URL, "_blank", "noopener,noreferrer");
   };
+  const accountLabel = session.user.email
+    ? maskEmail(session.user.email)
+    : session.user.id.slice(0, 8);
 
   return (
     <div className="dashboard">
       <header className="dashboard-header">
         <div className="brand">
           <span className="brand-name">LeetLedger</span>
-          <span className="brand-email">
-            {session.user.email ?? session.user.id}
+          <span className="brand-email" title={session.user.email ?? undefined}>
+            {accountLabel}
           </span>
         </div>
         <div className="dashboard-actions">

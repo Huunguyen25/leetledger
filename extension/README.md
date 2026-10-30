@@ -7,7 +7,8 @@ Browser extension (WXT + React) for **leetcode.com**. When you get an **Accepted
 - **Page bridge** — Runs in LeetCode's page world, intercepts submissions, and reads problem metadata.
 - **Content script** — Resolves identity, tracks assistance, and mounts the on-page review UI.
 - **Background** — Validates and deduplicates submissions, then coordinates extension storage.
-- **Popup** — Small dashboard for recent activity and review reminders.
+- **Popup** — Small dashboard for recent activity and review reminders. Sign-in opens a dedicated extension login tab (not the popup).
+- **Login tab** — Full-page email OTP UI (`/login.html`); closes after a successful verify.
 
 Durability notes:
 
@@ -31,7 +32,7 @@ Durability notes:
 read-only reader for LeetCode's own editor database.
 - `lib/review/` owns review persistence, caching, and mute state.
 - `lib/identity/` owns identity resolution and user-facing auth state.
-- `lib/supabase/` contains the shared client, auth API, and browser storage adapter.
+- `lib/supabase/` contains the shared client, auth API, login entry helper (`startLogin`), and browser storage adapter.
 - `types/` contains serialized message and storage contracts shared by runtimes.
 
 Runtime flow:
@@ -87,7 +88,7 @@ fetch bridge → content controller → background worker → storage
 - [ ] additional topic tags
 - [ ] add star feature to a favorite a problem
 - [x] Cap mastery slider based on automatic assistance detection 
-- [ ] Popup resend OTP code (60 second cooldown)
+- [x] Popup resend OTP code (60 second cooldown)
 
 - [ ] 1) **Manual add review** = popup button that opens a review **and** auto-fills the LeetCode problem (title, number, topics, etc.) so you’re not starting from a blank form.
 - [ ] 2) notification for next solve date (add in backend?) 

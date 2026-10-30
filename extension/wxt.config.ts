@@ -34,7 +34,9 @@ export default defineConfig({
   manifest: {
     // Interception is done by wrapping window.fetch in the injected bridge,
     // so only storage is needed (no webRequest).
-    permissions: ["storage"],
+    // "tabs" lets startLogin() focus an existing login tab instead of spawning
+    // duplicates when the popup Sign in button is clicked again.
+    permissions: ["storage", "tabs"],
 
     // Match the content-script/web-accessible-resource patterns: any
     // leetcode.com subdomain (e.g. www.) over http or https.

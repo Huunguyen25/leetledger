@@ -2,53 +2,26 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import Dashboard from "@/components/popup/Dashboard";
 import { clearHistoryCache } from "@/lib/review/cache";
-import {
-  signInWithEmail,
-  signOut,
-  supabaseAuth,
-  verifyEmailOtp,
-} from "@/lib/supabase/auth";
-import {
-  clearPendingOtp,
-  getPendingOtp,
-  setPendingOtp,
-} from "@/lib/supabase/pending-otp";
+import { signOut, supabaseAuth } from "@/lib/supabase/auth";
+import { startLogin } from "@/lib/supabase/start-login";
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Gates the first render until session + persisted OTP state are read, so the
-  // email form doesn't flash before we know there's a pending verification.
+  const [signingOut, setSigningOut] = useState(false);
+  const [openingLogin, setOpeningLogin] = useState(false);
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      supabaseAuth.getSession(),
-      getPendingOtp(),
-    ])
-      .then(([{ data }, pending]) => {
-        setSession(data.session);
-        // Only restore the verify form when not already signed in.
-        if (!data.session && pending) setPendingEmail(pending);
-      })
+    supabaseAuth
+      .getSession()
+      .then(({ data }) => setSession(data.session))
       .finally(() => setInitializing(false));
 
     const { data: sub } = supabaseAuth.onAuthStateChange(
-      (_event, nextSession) => {
+      (event, nextSession) => {
         setSession(nextSession);
-        if (nextSession) {
-          void clearPendingOtp();
-          setPendingEmail(null);
-          setEmail("");
-          setCode("");
-          setError(null);
-        } else {
+        if (event === "SIGNED_OUT") {
           void clearHistoryCache();
-          void clearPendingOtp();
         }
       },
     );
@@ -56,39 +29,22 @@ function App() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  async function handleSendCode(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email || loading) return;
-    setLoading(true);
-    setError(null);
-    const result = await signInWithEmail(email);
-    setLoading(false);
-    if (result.success) {
-      await setPendingOtp(email);
-      setPendingEmail(email);
-      setCode("");
-    } else {
-      setError(result.error?.message ?? "Failed to send code");
-    }
-  }
-
-  async function handleVerifyCode(e: React.FormEvent) {
-    e.preventDefault();
-    if (!pendingEmail || !code || loading) return;
-    setLoading(true);
-    setError(null);
-    const result = await verifyEmailOtp(pendingEmail, code);
-    setLoading(false);
-    if (!result.success) {
-      setError(result.error?.message ?? "Invalid or expired code");
+  async function handleSignIn() {
+    if (openingLogin) return;
+    setOpeningLogin(true);
+    try {
+      await startLogin();
+      // Popup usually closes when the new tab focuses; ignore if it stays open.
+    } finally {
+      setOpeningLogin(false);
     }
   }
 
   async function handleSignOut() {
-    setLoading(true);
+    setSigningOut(true);
     await signOut();
     await clearHistoryCache();
-    setLoading(false);
+    setSigningOut(false);
   }
 
   if (initializing) {
@@ -105,45 +61,8 @@ function App() {
       <Dashboard
         session={session}
         onSignOut={handleSignOut}
-        signingOut={loading}
+        signingOut={signingOut}
       />
-    );
-  }
-
-  if (pendingEmail) {
-    return (
-      <div className="auth">
-        <h1 className="auth-title">LeetLedger</h1>
-        <p>We sent a code to {pendingEmail}</p>
-        <form onSubmit={handleVerifyCode}>
-          <input
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="6-digit code"
-            value={code}
-            onChange={(e) => setCode(e.target.value.trim())}
-            disabled={loading}
-            autoFocus
-          />
-          <button type="submit" disabled={loading || code.length === 0}>
-            {loading ? "Verifying…" : "Verify"}
-          </button>
-        </form>
-        <button
-          type="button"
-          onClick={() => {
-            void clearPendingOtp();
-            setPendingEmail(null);
-            setCode("");
-            setError(null);
-          }}
-          disabled={loading}
-        >
-          Use a different email
-        </button>
-        {error && <div className="auth-error" role="alert">{error}</div>}
-      </div>
     );
   }
 
@@ -151,21 +70,14 @@ function App() {
     <div className="auth">
       <h1 className="auth-title">LeetLedger</h1>
       <p className="auth-subtitle">Sign in to sync your reviews.</p>
-      <form onSubmit={handleSendCode}>
-        <input
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={loading}
-          autoFocus
-          required
-        />
-        <button type="submit" disabled={loading || !email}>
-          {loading ? "Sending…" : "Send code"}
-        </button>
-      </form>
-      {error && <div className="auth-error" role="alert">{error}</div>}
+      <button
+        type="button"
+        className="auth-submit"
+        onClick={() => void handleSignIn()}
+        disabled={openingLogin}
+      >
+        {openingLogin ? "Opening…" : "Sign in"}
+      </button>
     </div>
   );
 }
