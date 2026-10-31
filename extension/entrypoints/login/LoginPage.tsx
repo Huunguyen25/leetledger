@@ -1,5 +1,9 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { maskEmail } from "@/lib/identity/mask-email";
+import { EmailSignInScreen } from "@/components/auth/email-signin";
+import {
+  OtpVerifyScreen,
+  type OtpVerifyBusy,
+} from "@/components/auth/otp-verify";
 import {
   signInWithEmail,
   supabaseAuth,
@@ -12,7 +16,7 @@ import {
   setPendingOtp,
 } from "@/lib/supabase/pending-otp";
 
-type AuthBusy = "send" | "verify" | "resend" | null;
+type AuthBusy = "send" | OtpVerifyBusy;
 type Step = "loading" | "email" | "code" | "done";
 
 const CLOSE_AFTER_MS = 1400;
@@ -48,7 +52,7 @@ export default function LoginPage() {
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [sentAt, setSentAt] = useState<number | null>(null);
   const [cooldown, setCooldown] = useState(0);
-  const [busy, setBusy] = useState<AuthBusy>(null);
+  const [busy, setBusy] = useState<AuthBusy | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("loading");
 
@@ -170,97 +174,28 @@ export default function LoginPage() {
   }
 
   if (step === "code" && pendingEmail) {
-    const masked = maskEmail(pendingEmail);
     return (
-      <AuthCard
-        title="Enter your code"
-        subtitle={
-          <>
-            Sent to <span className="auth-email">{masked}</span>
-          </>
-        }
-      >
-        <form className="auth-form" onSubmit={handleVerifyCode}>
-          <input
-            className="auth-code"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="000000"
-            maxLength={8}
-            value={code}
-            onChange={(e) =>
-              setCode(e.target.value.replace(/\D/g, "").slice(0, 8))
-            }
-            disabled={busy !== null}
-            autoFocus
-            aria-label="Verification code"
-          />
-          <button
-            type="submit"
-            className="auth-submit"
-            disabled={busy !== null || code.length < 6}
-          >
-            {busy === "verify" ? "Verifying…" : "Verify"}
-          </button>
-        </form>
-        <div className="auth-secondary">
-          <button
-            type="button"
-            className="auth-link"
-            onClick={() => void handleResendCode()}
-            disabled={busy !== null || cooldown > 0}
-          >
-            {busy === "resend"
-              ? "Sending…"
-              : cooldown > 0
-                ? `Resend in ${cooldown}s`
-                : "Send another code"}
-          </button>
-          <button
-            type="button"
-            className="auth-link"
-            onClick={handleDifferentEmail}
-            disabled={busy !== null}
-          >
-            Different email
-          </button>
-        </div>
-        {error ? (
-          <p className="auth-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </AuthCard>
+      <OtpVerifyScreen
+        email={pendingEmail}
+        code={code}
+        onCodeChange={setCode}
+        onVerify={handleVerifyCode}
+        onResend={() => void handleResendCode()}
+        onDifferentEmail={handleDifferentEmail}
+        busy={busy === "verify" || busy === "resend" ? busy : null}
+        cooldown={cooldown}
+        error={error}
+      />
     );
   }
 
   return (
-    <AuthCard title="Sign in" subtitle="Sync reviews across devices.">
-      <form className="auth-form" onSubmit={handleSendCode}>
-        <input
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={busy !== null}
-          autoFocus
-          required
-          aria-label="Email"
-        />
-        <button
-          type="submit"
-          className="auth-submit"
-          disabled={busy !== null || !email}
-        >
-          {busy === "send" ? "Sending…" : "Send code"}
-        </button>
-      </form>
-      {error ? (
-        <p className="auth-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </AuthCard>
+    <EmailSignInScreen
+      email={email}
+      onEmailChange={setEmail}
+      onSubmit={handleSendCode}
+      busy={busy === "send"}
+      error={error}
+    />
   );
 }

@@ -2,7 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import {
+  OtpVerifyScreen,
+  type OtpVerifyBusy,
+} from "@/components/auth/otp-verify";
 import { useDashboard } from "@/components/dashboard/dashboard-provider";
+
+// Loads shared email/OTP auth screen styles (also used by OtpVerifyScreen).
+import "@/components/auth/otp-verify/otp-verify.css";
+
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+
+function resendCooldownSeconds(sentAt: number, now = Date.now()): number {
+  return Math.max(0, Math.ceil((sentAt + OTP_RESEND_COOLDOWN_MS - now) / 1000));
+}
 
 export function SignInForm() {
   const router = useRouter();
@@ -16,8 +29,13 @@ export function SignInForm() {
   const [otpEmail, setOtpEmail] = useState("");
   const [otpToken, setOtpToken] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [authBusy, setAuthBusy] = useState(false);
+  const [sentAt, setSentAt] = useState<number | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  const [authBusy, setAuthBusy] = useState<
+    "send" | OtpVerifyBusy | null
+  >(null);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [signedOutNotice, setSignedOutNotice] = useState(false);
 
   useEffect(() => {
@@ -36,29 +54,100 @@ export function SignInForm() {
     }
   }, [dataStatus, router, sessionEmail]);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (sentAt == null) {
+      setCooldown(0);
+      return;
+    }
+    const tick = () => setCooldown(resendCooldownSeconds(sentAt));
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [sentAt]);
+
+  async function onSendCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setAuthBusy(true);
+    if (authBusy) return;
+    setAuthBusy("send");
     setAuthMessage(null);
+    setAuthError(null);
     setSignedOutNotice(false);
     try {
-      if (!otpSent) {
-        await sendOtp(otpEmail.trim());
-        setOtpSent(true);
-        setAuthMessage("Check your email for the six-digit code.");
-      } else {
-        await verifyOtp(otpEmail.trim(), otpToken.trim());
-        setOtpToken("");
-        setOtpSent(false);
-        router.replace("/");
-      }
+      await sendOtp(otpEmail.trim());
+      setOtpSent(true);
+      setSentAt(Date.now());
+      setOtpToken("");
+      setAuthMessage("Check your email for the six-digit code.");
     } catch (error) {
-      setAuthMessage(
+      setAuthError(
         error instanceof Error ? error.message : "Authentication failed.",
       );
     } finally {
-      setAuthBusy(false);
+      setAuthBusy(null);
     }
+  }
+
+  async function onVerifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (authBusy) return;
+    setAuthBusy("verify");
+    setAuthError(null);
+    try {
+      await verifyOtp(otpEmail.trim(), otpToken.trim());
+      setOtpToken("");
+      setOtpSent(false);
+      setSentAt(null);
+      router.replace("/");
+    } catch (error) {
+      setAuthError(
+        error instanceof Error ? error.message : "Invalid or expired code",
+      );
+    } finally {
+      setAuthBusy(null);
+    }
+  }
+
+  async function onResendCode() {
+    if (authBusy || cooldown > 0 || !otpEmail.trim()) return;
+    setAuthBusy("resend");
+    setAuthError(null);
+    try {
+      await sendOtp(otpEmail.trim());
+      setSentAt(Date.now());
+      setOtpToken("");
+      setAuthMessage("Check your email for the six-digit code.");
+    } catch (error) {
+      setAuthError(
+        error instanceof Error ? error.message : "Failed to resend code",
+      );
+    } finally {
+      setAuthBusy(null);
+    }
+  }
+
+  function onDifferentEmail() {
+    setOtpSent(false);
+    setOtpToken("");
+    setSentAt(null);
+    setAuthMessage(null);
+    setAuthError(null);
+  }
+
+  if (otpSent) {
+    return (
+      <OtpVerifyScreen
+        email={otpEmail}
+        code={otpToken}
+        onCodeChange={setOtpToken}
+        onVerify={onVerifyCode}
+        onResend={() => void onResendCode()}
+        onDifferentEmail={onDifferentEmail}
+        busy={authBusy === "verify" || authBusy === "resend" ? authBusy : null}
+        cooldown={cooldown}
+        error={authError}
+        hint={authMessage ?? "Check your email for the six-digit code."}
+      />
+    );
   }
 
   return (
@@ -92,7 +181,7 @@ export function SignInForm() {
             Checking your session…
           </div>
         ) : (
-          <form className="signin-form" onSubmit={onSubmit}>
+          <form className="signin-form" onSubmit={onSendCode}>
             <label>
               <span>Email</span>
               <input
@@ -100,51 +189,22 @@ export function SignInForm() {
                 required
                 autoComplete="email"
                 value={otpEmail}
-                disabled={otpSent || authBusy}
+                disabled={authBusy !== null}
                 onChange={(event) => setOtpEmail(event.target.value)}
               />
             </label>
-            {otpSent && (
-              <label>
-                <span>Six-digit code</span>
-                <input
-                  type="text"
-                  required
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  value={otpToken}
-                  disabled={authBusy}
-                  onChange={(event) => setOtpToken(event.target.value)}
-                />
-              </label>
+            {authError && (
+              <p className="signin-error" role="alert">
+                {authError}
+              </p>
             )}
-            {authMessage && <p role="status">{authMessage}</p>}
             <button
               type="submit"
-              className="button primary"
-              disabled={authBusy}
+              className="signin-submit"
+              disabled={authBusy !== null}
             >
-              {authBusy
-                ? "Working…"
-                : otpSent
-                  ? "Verify code"
-                  : "Send code"}
+              {authBusy === "send" ? "Sending…" : "Send code"}
             </button>
-            {otpSent && (
-              <button
-                type="button"
-                className="button"
-                onClick={() => {
-                  setOtpSent(false);
-                  setOtpToken("");
-                  setAuthMessage(null);
-                }}
-              >
-                Use a different email
-              </button>
-            )}
           </form>
         )}
       </div>

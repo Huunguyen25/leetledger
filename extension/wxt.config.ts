@@ -26,9 +26,9 @@ export default defineConfig({
   webExt: {
     startUrls: ["https://leetcode.com"],
     chromiumArgs: [
-      '--disable-blink-features=AutomationControlled',
-      '--user-data-dir=./.chrome-dev-data'
-    ]
+      "--disable-blink-features=AutomationControlled",
+      "--user-data-dir=./.chrome-dev-data",
+    ],
   },
   modules: ["@wxt-dev/module-react"],
   manifest: {
