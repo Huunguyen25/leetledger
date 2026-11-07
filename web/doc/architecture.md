@@ -14,6 +14,9 @@ extension. Both clients use the same Supabase account but keep separate sessions
   and browser caches.
 - `lib/dashboard/timeline.ts` — archive validation and reconstruction.
 - `lib/dashboard/types.ts` — dashboard data contracts.
+- `scripts/verify-supabase-isolation.mjs` — operator-run anonymous and
+  cross-account checks.
+- `../../supabase/migrations/` — versioned database hardening.
 
 ## Data flow
 
@@ -31,6 +34,16 @@ extension. Both clients use the same Supabase account but keep separate sessions
 - Async review and archive responses update state only for the active user.
 - Persistent review caches remain user-keyed.
 - Account-scoped in-memory archive state is cleared during account changes.
+- Provider integration tests cover stale review and archive responses.
+- Extension builds receive only the Supabase URL, publishable key, and
+  dashboard URL—never a secret key.
+
+## Release path
+
+1. Root CI validates extension and web builds.
+2. Vercel hosts `web/` with public Supabase configuration.
+3. A `v*` Git tag builds the Chrome zip and creates a GitHub prerelease.
+4. Runtime isolation and fresh-account checks decide launch readiness.
 
 ## Current scope
 

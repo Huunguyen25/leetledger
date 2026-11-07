@@ -4,7 +4,7 @@
 
 1. Sign into the dashboard with email OTP.
 2. Follow the three-step setup guide.
-3. Install the extension and use the same email.
+3. Install the Chrome prerelease and use the same email.
 4. Solve a LeetCode problem and save its review.
 5. Return to the dashboard and check for reviews.
 
@@ -47,3 +47,11 @@ archive, a missing archive, and a failed download.
 
 See [`../DASHBOARD_PUBLIC_READINESS.md`](../DASHBOARD_PUBLIC_READINESS.md)
 for Supabase isolation and end-to-end acceptance tests.
+
+Publisher order:
+
+1. Rotate the removed Supabase secret and apply the hardening migration.
+2. Deploy the dashboard and configure Supabase Auth URLs.
+3. Push the release commit and configure GitHub workflow variables.
+4. Push `v0.1.0-beta.1`, install its Chrome asset, and run the fresh-account
+   and A/B isolation checks.

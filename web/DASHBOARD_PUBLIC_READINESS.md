@@ -7,6 +7,16 @@ custom profiles, recommendations, and authentication redesign are deferred.
 The dashboard is ready for a limited public soft launch only after all three
 gates below pass.
 
+## Release-candidate preparation
+
+- [x] Extension version set to `0.1.0-beta.1`.
+- [x] Root CI validates the extension and web projects.
+- [x] Tag-driven Chrome prerelease workflow is ready.
+- [x] Safe extension and web environment examples are tracked.
+- [x] Extension compile, lint, tests, and production build pass locally.
+- [x] Web compile, lint, six tests, and production build pass locally.
+- [ ] Push the prepared release commit and configure GitHub workflow variables.
+
 ## Gate 1 — Account and data isolation
 
 - [x] Reviews RLS is enabled and its ownership condition was inspected:
@@ -23,6 +33,10 @@ gates below pass.
 - [x] Provider integration tests resolve stale review and archive requests after
   an A→B account switch and confirm account A does not return to state.
 - [ ] Repeat the A→B account-switch check in the deployed UI.
+- [x] Remove the unused Supabase secret key from extension configuration.
+- [ ] Rotate that secret key in Supabase before inviting users.
+- [x] Version the function-hardening SQL migration.
+- [ ] Apply the migration and clear the two database advisor warnings.
 
 The inspected policies do not need redesign unless a runtime check fails.
 Runtime isolation failures block release.
@@ -37,9 +51,8 @@ TEST_USER_B_EMAIL=... TEST_USER_B_PASSWORD=... \
 npm run test:isolation
 ```
 
-Before launch, apply the versioned function hardening migration and confirm the
-Supabase advisors no longer report executable `rls_auto_enable()` or a mutable
-`calculate_srs_metrics()` search path.
+The migration is
+`supabase/migrations/202611070001_harden_advised_functions.sql`.
 
 ## Gate 2 — First-user experience
 
@@ -70,6 +83,7 @@ make build
 
 - [x] TypeScript, lint, six unit/integration tests, and the production build
   pass locally.
+- [ ] Root GitHub CI passes on the published release commit.
 - [ ] Production has the correct Supabase URL and publishable key.
 - [ ] The production dashboard URL is allowed by Supabase Auth.
 - [ ] Expired sessions return to sign-in without briefly showing dashboard
