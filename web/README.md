@@ -50,7 +50,7 @@ Configure the two public Supabase variables on the hosting platform, then run
 allowed redirect URLs in Supabase Auth.
 
 Before release, complete the checks in
-[`../DASHBOARD_PUBLIC_READINESS.md`](../DASHBOARD_PUBLIC_READINESS.md).
+[`DASHBOARD_PUBLIC_READINESS.md`](DASHBOARD_PUBLIC_READINESS.md).
 
 ## Data and privacy boundary
 

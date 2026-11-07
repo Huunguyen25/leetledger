@@ -45,5 +45,5 @@ archive, a missing archive, and a failed download.
 
 ## Release-critical checks
 
-See [`../../DASHBOARD_PUBLIC_READINESS.md`](../../DASHBOARD_PUBLIC_READINESS.md)
+See [`../DASHBOARD_PUBLIC_READINESS.md`](../DASHBOARD_PUBLIC_READINESS.md)
 for Supabase isolation and end-to-end acceptance tests.
