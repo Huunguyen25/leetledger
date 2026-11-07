@@ -55,7 +55,10 @@ export function HistoryWorkspace() {
   const [missingArchives, setMissingArchives] = useState<Set<string>>(
     () => new Set(),
   );
-  const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [archiveListError, setArchiveListError] = useState<string | null>(null);
+  const [archiveDownloadError, setArchiveDownloadError] = useState<
+    string | null
+  >(null);
 
   const active = submissions.find(
     ({ problem }) => problem.problemSlug === activeSlug,
@@ -66,7 +69,8 @@ export function HistoryWorkspace() {
     active &&
       !active.archive &&
       !missingArchives.has(active.problem.problemSlug) &&
-      !archiveError &&
+      !archiveListError &&
+      !archiveDownloadError &&
       ((sessionUserId && availableSlugs === null) ||
         availableSlugs?.has(active.problem.problemSlug)),
   );
@@ -84,26 +88,41 @@ export function HistoryWorkspace() {
 
   useEffect(() => {
     if (!sessionUserId) {
-      const frame = window.requestAnimationFrame(() => setAvailableSlugs(null));
+      const frame = window.requestAnimationFrame(() => {
+        setAvailableSlugs(null);
+        setArchiveListError(null);
+        setArchiveDownloadError(null);
+        setMissingArchives(new Set());
+      });
       return () => window.cancelAnimationFrame(frame);
     }
     let activeRequest = true;
+    const frame = window.requestAnimationFrame(() => {
+      setAvailableSlugs(null);
+      setArchiveListError(null);
+      setArchiveDownloadError(null);
+      setMissingArchives(new Set());
+    });
     void listTimelineProblemSlugs(sessionUserId)
       .then((slugs) => {
-        if (activeRequest) setAvailableSlugs(slugs);
+        if (activeRequest) {
+          setArchiveListError(null);
+          setAvailableSlugs(slugs);
+        }
       })
       .catch((error: unknown) => {
         if (activeRequest) {
-          setArchiveError(
-            error instanceof Error
-              ? error.message
-              : "Could not list code timelines.",
+          const message =
+            error instanceof Error ? error.message : "Unknown storage error.";
+          setArchiveListError(
+            `Could not check available code timelines: ${message}`,
           );
           setAvailableSlugs(new Set());
         }
       });
     return () => {
       activeRequest = false;
+      window.cancelAnimationFrame(frame);
     };
   }, [sessionUserId]);
 
@@ -129,10 +148,10 @@ export function HistoryWorkspace() {
       })
       .catch((error: unknown) => {
         if (activeRequest) {
-          setArchiveError(
-            error instanceof Error
-              ? error.message
-              : "Could not load the code timeline.",
+          const message =
+            error instanceof Error ? error.message : "Unknown download error.";
+          setArchiveDownloadError(
+            `The code timeline could not be downloaded: ${message}`,
           );
         }
       });
@@ -162,7 +181,7 @@ export function HistoryWorkspace() {
       ({ problem }) => problem.problemSlug === slug,
     )?.archive;
     setEventIndex(Math.max(0, (archive?.events.length ?? 1) - 1));
-    setArchiveError(null);
+    setArchiveDownloadError(null);
   }
 
   function move(target: number) {
@@ -186,8 +205,8 @@ export function HistoryWorkspace() {
       <div className="content">
         <PageHeading
           eyebrow="Your coding journey"
-          title="Submission history"
-          description="Replay accepted solutions and revisit your solve notes."
+          title="Tracked solve history"
+          description="Reviewed problems and their available code timelines appear here; this is not a complete log of every LeetCode submission."
         />
         <DashboardDataNotice />
       </div>
@@ -201,8 +220,8 @@ export function HistoryWorkspace() {
     <div className="content history-content">
       <PageHeading
         eyebrow="Your coding journey"
-        title="Submission history"
-        description="Replay how your solutions developed, inspect the final accepted code, and revisit your solve notes."
+        title="Tracked solve history"
+        description="Replay available code timelines for reviewed problems. This view does not represent every LeetCode submission."
         action={
           <button
             type="button"
@@ -217,9 +236,10 @@ export function HistoryWorkspace() {
         <aside className="panel history-sidebar">
           <header className="panel-heading">
             <div>
-              <h2>Accepted submissions</h2>
+              <h2>Tracked problems</h2>
               <p>
-                {filtered.length} matching of {submissions.length} recent solves
+                {filtered.length} matching of {submissions.length} reviewed
+                problems
               </p>
             </div>
             <span className="badge">Supabase</span>
@@ -245,7 +265,7 @@ export function HistoryWorkspace() {
                   <option value="all">
                     {availableSlugs === null
                       ? "Checking code archives…"
-                      : "All submissions"}
+                      : "All tracked problems"}
                   </option>
                   <option value="yes">With evolution</option>
                   <option value="no">Without evolution</option>
@@ -253,7 +273,7 @@ export function HistoryWorkspace() {
               </label>
             </div>
           </div>
-          <div className="history-list" aria-label="Accepted submissions list">
+          <div className="history-list" aria-label="Tracked problems list">
             {filtered.length ? (
               filtered.map(({ problem: item, archive: itemArchive }) => (
                 <button
@@ -342,9 +362,9 @@ export function HistoryWorkspace() {
               <div className="evolution unavailable" role="status">
                 Downloading and reconstructing the code timeline…
               </div>
-            ) : archiveError ? (
+            ) : archiveDownloadError || archiveListError ? (
               <div className="evolution unavailable" role="alert">
-                {archiveError}
+                {archiveDownloadError ?? archiveListError}
               </div>
             ) : events.length ? (
               <div className="evolution">
@@ -428,7 +448,9 @@ export function HistoryWorkspace() {
               </div>
             ) : (
               <div className="evolution unavailable">
-                This accepted submission does not have a stored evolution archive.
+                {missingArchives.has(problem.problemSlug)
+                  ? "A timeline was listed for this problem, but its archive is no longer available."
+                  : "No code timeline was recorded for this reviewed problem."}
               </div>
             )}
             <div className="code-heading">
@@ -471,7 +493,8 @@ export function HistoryWorkspace() {
                 </pre>
               ) : (
                 <div className="code-placeholder">
-                  Final code is not available without an evolution archive.
+                  Archived source is unavailable when no code timeline was
+                  recorded or the archive cannot be downloaded.
                 </div>
               )}
             </div>

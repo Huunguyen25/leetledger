@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LeetLedger dashboard
 
-## Getting Started
+The LeetLedger dashboard displays reviews and code timelines created by the
+LeetLedger browser extension. The extension and dashboard use separate browser
+sessions, but users must sign into both with the same Supabase email account.
 
-First, run the development server:
+## Local setup
+
+Requirements: Node.js 20+, npm, and a Supabase project containing the
+LeetLedger `reviews` table and private `code-timelines` Storage bucket.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
+npm install
+make dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Set these public client values in `.env.local`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000). Useful checks:
 
-## Learn More
+```bash
+make compile
+make validate
+make build
+```
 
-To learn more about Next.js, take a look at the following resources:
+## First-user flow
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Download the extension from
+   [GitHub Releases](https://github.com/Huunguyen25/leetledger/releases).
+2. In Chrome, open `chrome://extensions`, enable Developer mode, choose
+   **Load unpacked**, and select the extracted extension directory.
+3. Sign into the extension and dashboard with the same email.
+4. Solve a LeetCode problem and save its review.
+5. Return to the dashboard and choose **Check for reviews**.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The History page lists reviewed problems and their newest available code
+timeline. It is not a complete submission-by-submission LeetCode history.
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Configure the two public Supabase variables on the hosting platform, then run
+`npm run build` and `npm run start`. Add the production dashboard URL to the
+allowed redirect URLs in Supabase Auth.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Before release, complete the checks in
+[`../DASHBOARD_PUBLIC_READINESS.md`](../DASHBOARD_PUBLIC_READINESS.md).
+
+## Data and privacy boundary
+
+- The browser uses the public Supabase key; row and object isolation therefore
+  depends on RLS and private Storage policies.
+- Review reads are scoped to the authenticated user ID.
+- Timeline objects are expected under an authenticated user-owned path in the
+  private `code-timelines` bucket.
+- Review caches remain in that browser under user-specific local-storage keys.
+- Signing out clears displayed in-memory data. It does not erase that
+  user-keyed local cache.
+
+## Troubleshooting
+
+- **No reviews:** confirm both apps use the same email and that a review was
+  saved after an accepted solve.
+- **Could not load reviews:** retry from the dashboard and inspect Supabase RLS,
+  environment variables, and browser network errors.
+- **Missing timeline:** a review may exist without a recorded archive.
+- **Timeline download failed:** confirm the bucket is private and its ownership
+  policy permits the signed-in user's path.

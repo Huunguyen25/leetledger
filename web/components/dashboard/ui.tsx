@@ -47,9 +47,65 @@ export function PageHeading({
   );
 }
 
-export function DashboardDataNotice() {
-  const { dataStatus, dataError, problems } = useDashboard();
+export function DashboardDataNotice({
+  onboarding = false,
+}: {
+  onboarding?: boolean;
+}) {
+  const {
+    dataStatus,
+    dataError,
+    problems,
+    refreshData,
+    sessionUserId,
+  } = useDashboard();
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [setupRequested, setSetupRequested] = useState(false);
   let notice: ReactNode = null;
+
+  useEffect(() => {
+    if (!onboarding || !sessionUserId) return;
+    const frame = window.requestAnimationFrame(() => {
+      setOnboardingDismissed(
+        window.localStorage.getItem(
+          `leetledger-onboarding-dismissed:${sessionUserId}`,
+        ) === "1",
+      );
+      setSetupRequested(
+        new URLSearchParams(window.location.search).get("setup") === "1",
+      );
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [onboarding, sessionUserId]);
+
+  useEffect(() => {
+    if (!onboarding) return;
+    const openSetup = () => {
+      setOnboardingDismissed(false);
+      setSetupRequested(true);
+    };
+    window.addEventListener("leetledger:open-setup", openSetup);
+    return () =>
+      window.removeEventListener("leetledger:open-setup", openSetup);
+  }, [onboarding]);
+
+  function dismissOnboarding() {
+    if (sessionUserId) {
+      window.localStorage.setItem(
+        `leetledger-onboarding-dismissed:${sessionUserId}`,
+        "1",
+      );
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("setup");
+    window.history.replaceState(
+      null,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+    setSetupRequested(false);
+    setOnboardingDismissed(true);
+  }
 
   if (dataStatus === "checking") {
     notice = (
@@ -75,21 +131,93 @@ export function DashboardDataNotice() {
   } else if (dataStatus === "error") {
     notice = (
       <div className="notice data-notice" role="alert">
-        <strong>Could not load reviews.</strong> {dataError}
+        <span>
+          <strong>Could not load reviews.</strong> {dataError} Your dashboard
+          totals are hidden until data is available.
+        </span>
+        <button className="button" type="button" onClick={refreshData}>
+          Retry
+        </button>
       </div>
     );
   } else if (dataStatus === "cache" && dataError) {
     notice = (
       <div className="notice data-notice" role="status">
-        <strong>Could not refresh.</strong> Showing your cached reviews.{" "}
-        {dataError}
+        <span>
+          <strong>Could not refresh.</strong> Showing your cached reviews.{" "}
+          {dataError}
+        </span>
+        <button className="button" type="button" onClick={refreshData}>
+          Retry
+        </button>
       </div>
+    );
+  } else if (
+    dataStatus === "live" &&
+    onboarding &&
+    (setupRequested || (problems.length === 0 && !onboardingDismissed))
+  ) {
+    notice = (
+      <section className="onboarding-card" aria-labelledby="onboarding-title">
+        <div className="onboarding-heading">
+          <div>
+            <span className="eyebrow">First-time setup</span>
+            <h2 id="onboarding-title">Start tracking with LeetLedger</h2>
+            <p>
+              The dashboard fills up after the browser extension saves your
+              first review.
+            </p>
+          </div>
+          <button
+            className="button"
+            type="button"
+            onClick={dismissOnboarding}
+          >
+            Dismiss
+          </button>
+        </div>
+        <ol className="onboarding-steps">
+          <li>
+            <strong>Install the extension</strong>
+            <span>
+              Download the latest package from{" "}
+              <a
+                href="https://github.com/Huunguyen25/leetledger/releases"
+                target="_blank"
+                rel="noreferrer"
+              >
+                GitHub Releases
+              </a>{" "}
+              and load it in Chrome.
+            </span>
+          </li>
+          <li>
+            <strong>Sign in with this email</strong>
+            <span>Use the same account in the extension and dashboard.</span>
+          </li>
+          <li>
+            <strong>Save your first review</strong>
+            <span>
+              Solve a LeetCode problem, complete the review, then retry the
+              dashboard sync.
+            </span>
+          </li>
+        </ol>
+        <div className="onboarding-actions">
+          <button className="button primary" type="button" onClick={refreshData}>
+            Check for reviews
+          </button>
+          <span>
+            Already using LeetLedger? Confirm both apps use the same email.
+          </span>
+        </div>
+      </section>
     );
   } else if (dataStatus === "live" && problems.length === 0) {
     notice = (
       <div className="notice data-notice">
-        <strong>No reviewed problems yet.</strong> Solve a LeetCode problem with
-        the extension enabled and save its review to start this workspace.
+        <strong>No reviewed problems yet.</strong> Open Setup help from the
+        account menu for extension installation and sync instructions.
       </div>
     );
   }

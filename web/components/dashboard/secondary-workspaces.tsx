@@ -19,7 +19,6 @@ import {
   DashboardDataNotice,
   PageHeading,
   Panel,
-  ProfileSelector,
   ReviewCard,
   TopicBars,
 } from "./ui";
@@ -32,59 +31,54 @@ const reviewGroups: Array<[string, ReviewStatus]> = [
 ];
 
 export function ReviewsWorkspace() {
-  const { problems } = useDashboard();
+  const { dataStatus, problems } = useDashboard();
+
+  if (dataStatus === "error") {
+    return (
+      <div className="content">
+        <PageHeading
+          title="Reviews"
+          description="Your spaced-repetition review schedule."
+        />
+        <DashboardDataNotice />
+      </div>
+    );
+  }
 
   return (
     <div className="content">
       <PageHeading
         title="Reviews"
-        description="Your spaced-repetition queue remains separate from future recommendation ranking, so urgency and profile relevance never become one opaque score."
-        action={<ProfileSelector compact />}
+        description="Work through overdue, due, and upcoming problems using the schedule saved with your reviews."
       />
       <DashboardDataNotice />
-      <div className="two-column-route">
-        <Panel
-          title="Needs review"
-          subtitle="Presentation groups derived from the server-owned next review date"
-          padded={false}
-        >
-          {reviewGroups.map(([label, status]) => {
-            const matching = problems.filter(
-              (problem) => reviewStatus(problem.nextReviewDate) === status,
-            );
-            return (
-              <Accordion
-                title={label}
-                count={matching.length}
-                defaultOpen={status !== "scheduled"}
-                key={status}
-              >
-                {matching.length ? (
-                  matching.map((problem) => (
-                    <ReviewCard key={problem.problemSlug} problem={problem} />
-                  ))
-                ) : (
-                  <div className="empty-inline">No problems in this group.</div>
-                )}
-              </Accordion>
-            );
-          })}
-        </Panel>
-        <Panel
-          title="Recommended problems"
-          subtitle="Future feature · no recommendation source configured"
-          action={<span className="future-label">Future</span>}
-        >
-          <div className="notice">
-            Production recommendations require an eligible problem source,
-            profile requirements, and an explainable scoring model. These
-            examples are not part of your SRS schedule.
-          </div>
-          <div className="empty-inline">
-            No recommendation records are available in the current schema.
-          </div>
-        </Panel>
-      </div>
+      <Panel
+        title="Needs review"
+        subtitle="Groups derived from the saved next review date"
+        padded={false}
+      >
+        {reviewGroups.map(([label, status]) => {
+          const matching = problems.filter(
+            (problem) => reviewStatus(problem.nextReviewDate) === status,
+          );
+          return (
+            <Accordion
+              title={label}
+              count={matching.length}
+              defaultOpen={status !== "scheduled"}
+              key={status}
+            >
+              {matching.length ? (
+                matching.map((problem) => (
+                  <ReviewCard key={problem.problemSlug} problem={problem} />
+                ))
+              ) : (
+                <div className="empty-inline">No problems in this group.</div>
+              )}
+            </Accordion>
+          );
+        })}
+      </Panel>
     </div>
   );
 }
@@ -124,7 +118,6 @@ export function InsightsWorkspace() {
       <PageHeading
         title="Insights"
         description="Actionable signals about weak topics, review workload, mastery, and assistance dependency."
-        action={<ProfileSelector compact />}
       />
       <DashboardDataNotice />
       <div className="mini-stat-grid">

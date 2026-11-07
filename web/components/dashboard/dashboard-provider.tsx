@@ -6,11 +6,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { PROFILES } from "@/lib/dashboard/profiles";
+import { isCurrentSessionRequest } from "@/lib/dashboard/request-guard";
 import {
+  clearDashboardMemoryCaches,
   getDashboardSession,
   isDashboardConfigured,
   loadLatestTimelineArchive,
@@ -47,6 +50,7 @@ interface DashboardContextValue {
     | "live"
     | "error";
   dataError: string | null;
+  refreshData: () => void;
   loadArchive: (problemSlug: string) => Promise<SubmissionArchive | null>;
   sendOtp: (email: string) => Promise<void>;
   verifyOtp: (email: string, token: string) => Promise<void>;
@@ -69,6 +73,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [selectedProblem, setSelectedProblem] = useState<ProblemReview | null>(
     null,
   );
+  const [refreshGeneration, setRefreshGeneration] = useState(0);
+  const requestGeneration = useRef(0);
+  const currentUserId = useRef<string | null>(null);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("leetledger-profile");
@@ -80,14 +87,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!authConfigured) return;
     let active = true;
+    let receivedAuthEvent = false;
 
     async function loadSession() {
       try {
         const session = await getDashboardSession();
-        if (!active) return;
+        if (!active || receivedAuthEvent) return;
         await applySession(session);
       } catch (error) {
-        if (active) {
+        if (active && !receivedAuthEvent) {
           setDataError(errorMessage(error));
           setDataStatus("error");
         }
@@ -98,48 +106,84 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       session: Awaited<ReturnType<typeof getDashboardSession>>,
     ) {
       if (!active) return;
+      const nextUserId = session?.user.id ?? null;
+      const previousUserId = currentUserId.current;
+      const generation = ++requestGeneration.current;
+      currentUserId.current = nextUserId;
+      setDataError(null);
+
+      if (previousUserId && previousUserId !== nextUserId) {
+        clearDashboardMemoryCaches(previousUserId);
+      }
+
       if (!session) {
         setSessionEmail(null);
         setSessionUserId(null);
         setProblems([]);
         setArchives([]);
+        setSelectedProblem(null);
         setDataStatus("signed-out");
         setDataError(null);
         return;
       }
 
+      const userId = session.user.id;
       setSessionEmail(session.user.email ?? "Signed-in account");
-      setSessionUserId(session.user.id);
+      setSessionUserId(userId);
       setArchives([]);
-      const cached = readCachedReviews(session.user.id);
+      setSelectedProblem(null);
+      const cached = readCachedReviews(userId);
       if (cached) {
         setProblems(cached.reviews);
         setDataStatus("cache");
+      } else {
+        setProblems([]);
+        setDataStatus("checking");
       }
 
       try {
-        const reviews = await listDashboardReviews(session.user.id);
-        if (!active) return;
+        const reviews = await listDashboardReviews(userId);
+        if (
+          !active ||
+          !isCurrentSessionRequest(
+            { generation, userId },
+            requestGeneration.current,
+            currentUserId.current,
+          )
+        ) {
+          return;
+        }
         setProblems(reviews);
         setDataStatus("live");
         setDataError(null);
       } catch (error) {
-        if (active) {
-          setDataError(errorMessage(error));
-          if (!cached) setDataStatus("error");
+        if (
+          !active ||
+          !isCurrentSessionRequest(
+            { generation, userId },
+            requestGeneration.current,
+            currentUserId.current,
+          )
+        ) {
+          return;
         }
+        setDataError(errorMessage(error));
+        if (!cached) setDataStatus("error");
       }
     }
 
     void loadSession();
     const unsubscribe = subscribeToDashboardAuth((session) => {
+      receivedAuthEvent = true;
       void applySession(session);
     });
     return () => {
       active = false;
+      requestGeneration.current += 1;
+      currentUserId.current = null;
       unsubscribe();
     };
-  }, [authConfigured]);
+  }, [authConfigured, refreshGeneration]);
 
   const setActiveProfileId = useCallback((id: string) => {
     setProfileId(id);
@@ -185,9 +229,19 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshData = useCallback(() => {
+    setDataError(null);
+    setDataStatus(authConfigured ? "checking" : "unconfigured");
+    setRefreshGeneration((current) => current + 1);
+  }, [authConfigured]);
+
   const loadArchive = useCallback(
     async (problemSlug: string) => {
       if (!sessionUserId) return null;
+      const token = {
+        generation: requestGeneration.current,
+        userId: sessionUserId,
+      };
       const existing = archives.find(
         (archive) => archive.problemSlug === problemSlug,
       );
@@ -196,6 +250,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         sessionUserId,
         problemSlug,
       );
+      if (
+        !isCurrentSessionRequest(
+          token,
+          requestGeneration.current,
+          currentUserId.current,
+        )
+      ) {
+        return null;
+      }
       if (archive) {
         setArchives((current) => [
           ...current.filter(
@@ -226,6 +289,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       sessionUserId,
       dataStatus,
       dataError,
+      refreshData,
       loadArchive,
       sendOtp,
       verifyOtp,
@@ -241,6 +305,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       loadArchive,
       openProblem,
       problems,
+      refreshData,
       selectedProblem,
       sendOtp,
       sessionEmail,

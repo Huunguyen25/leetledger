@@ -13,7 +13,6 @@ import {
   PageHeading,
   Panel,
   ProblemCollection,
-  ProfileSelector,
   StatusLegend,
   ViewToggle,
 } from "./ui";
@@ -23,7 +22,7 @@ type Sort = "due" | "mastery-low" | "mastery-high" | "title";
 export function ProblemsWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { problems } = useDashboard();
+  const { dataStatus, problems } = useDashboard();
   const query = searchParams.get("q") ?? "";
   const status = (searchParams.get("status") ?? "all") as ReviewStatus | "all";
   const difficulty = (searchParams.get("difficulty") ?? "all") as
@@ -84,12 +83,23 @@ export function ProblemsWorkspace() {
     });
   }
 
+  if (dataStatus === "error") {
+    return (
+      <div className="content">
+        <PageHeading
+          title="Problems"
+          description="Search and filter your complete tracked library."
+        />
+        <DashboardDataNotice />
+      </div>
+    );
+  }
+
   return (
     <div className="content">
       <PageHeading
         title="Problems"
         description="Search and filter your complete tracked library. Open details in place without losing the current view."
-        action={<ProfileSelector compact />}
       />
       <DashboardDataNotice />
       <Panel

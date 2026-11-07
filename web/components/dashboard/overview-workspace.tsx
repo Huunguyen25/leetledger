@@ -14,7 +14,6 @@ import {
   PageHeading,
   Panel,
   ProblemCollection,
-  ProfileSelector,
   ReviewCard,
   StatusLegend,
   TextLink,
@@ -23,7 +22,7 @@ import {
 } from "./ui";
 
 export function OverviewWorkspace() {
-  const { problems } = useDashboard();
+  const { dataStatus, problems } = useDashboard();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ReviewStatus | "all">("all");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -78,14 +77,25 @@ export function OverviewWorkspace() {
     (problem) => reviewStatus(problem.nextReviewDate) === "overdue",
   ).length;
 
+  if (dataStatus === "error") {
+    return (
+      <div className="content">
+        <PageHeading
+          title="Review workspace"
+          description="See what is due, inspect weak topics, and choose the next useful problem."
+        />
+        <DashboardDataNotice onboarding />
+      </div>
+    );
+  }
+
   return (
     <div className="content">
       <PageHeading
         title="Review workspace"
         description="See what is due, inspect weak topics, and choose the next useful problem without turning your dashboard into a wall of vanity stats."
-        action={<ProfileSelector />}
       />
-      <DashboardDataNotice />
+      <DashboardDataNotice onboarding />
 
       <section className="summary-grid" aria-label="Review summary">
         <SummaryCard
@@ -158,7 +168,7 @@ export function OverviewWorkspace() {
         <div className="stack action-column">
           <Panel
             title="What to work on"
-            subtitle="Review schedule first, recommendations second"
+            subtitle="Your upcoming spaced-repetition work"
             padded={false}
           >
             <div className="review-scroll">
@@ -173,23 +183,8 @@ export function OverviewWorkspace() {
                   </div>
                 )}
               </Accordion>
-              <Accordion
-                title="Recommended Problems"
-                count={0}
-                defaultOpen={false}
-                future
-              >
-                <div className="empty-inline">
-                  Recommendation data is not available in the current schema.
-                </div>
-              </Accordion>
             </div>
           </Panel>
-          <div className="notice">
-            <strong>Data boundary:</strong> Needs Review uses the existing{" "}
-            <code>next_review_date</code>. Recommendation ranking and preparation
-            profiles need backend tables and are shown as future UX only.
-          </div>
         </div>
       </div>
     </div>

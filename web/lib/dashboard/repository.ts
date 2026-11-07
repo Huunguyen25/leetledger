@@ -118,6 +118,19 @@ export async function signOutDashboard() {
   if (error) throw error;
 }
 
+export function clearDashboardMemoryCaches(userId?: string) {
+  if (!userId) {
+    usernameFolderCache.clear();
+    timelineCache.clear();
+    return;
+  }
+
+  usernameFolderCache.delete(userId);
+  for (const key of timelineCache.keys()) {
+    if (key.startsWith(`${userId}:`)) timelineCache.delete(key);
+  }
+}
+
 export function readCachedReviews(userId: string) {
   try {
     const raw = window.localStorage.getItem(`leetledger-reviews:${userId}`);
@@ -184,7 +197,12 @@ export function loadLatestTimelineArchive(userId: string, problemSlug: string) {
   const cacheKey = `${userId}:${problemSlug}`;
   const cached = timelineCache.get(cacheKey);
   if (cached) return cached;
-  const request = downloadLatestTimelineArchive(userId, problemSlug);
+  const request = downloadLatestTimelineArchive(userId, problemSlug).catch(
+    (error: unknown) => {
+      timelineCache.delete(cacheKey);
+      throw error;
+    },
+  );
   timelineCache.set(cacheKey, request);
   return request;
 }
@@ -244,7 +262,10 @@ function listUsernameFolders(userId: string) {
     return (data ?? [])
       .filter((entry) => entry.id === null || entry.id === undefined)
       .map((entry) => entry.name);
-  })();
+  })().catch((error: unknown) => {
+    usernameFolderCache.delete(userId);
+    throw error;
+  });
   usernameFolderCache.set(userId, request);
   return request;
 }

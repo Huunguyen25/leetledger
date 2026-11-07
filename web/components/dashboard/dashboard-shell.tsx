@@ -22,7 +22,6 @@ const navigation: Array<{ label: string; href: string; icon: IconName }> = [
   { label: "Reviews", href: "/reviews", icon: "reviews" },
   { label: "History", href: "/history", icon: "history" },
   { label: "Insights", href: "/insights", icon: "insights" },
-  { label: "Profiles", href: "/profiles", icon: "profiles" },
 ];
 
 function ShellContent({ children }: { children: ReactNode }) {
@@ -324,11 +323,16 @@ function ShellContent({ children }: { children: ReactNode }) {
                       </span>
                     </div>
                     <Link
-                      href="/profiles"
+                      href="/?setup=1"
                       role="menuitem"
-                      onClick={() => setAccountOpen(false)}
+                      onClick={() => {
+                        setAccountOpen(false);
+                        window.dispatchEvent(
+                          new Event("leetledger:open-setup"),
+                        );
+                      }}
                     >
-                      Profile settings
+                      Setup help
                     </Link>
                     <button
                       type="button"
